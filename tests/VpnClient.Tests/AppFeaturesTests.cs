@@ -97,7 +97,10 @@ public sealed class AppFeaturesTests : IDisposable
         var port = ((IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
 
-        Assert.NotNull(await NetworkProbe.TcpProbeAsync("127.0.0.1", port));
+        var ms = await NetworkProbe.TcpProbeAsync("127.0.0.1", port);
+        Assert.NotNull(ms);
+        // Sans désactiver les réessais SYN, Windows met ~1 s à signaler le refus : ce ne serait pas un aller-retour.
+        Assert.InRange(ms!.Value, 0, 300);
     }
 
     [Fact]

@@ -31,6 +31,7 @@ public static class NetworkProbe
     public static async Task<long?> TcpProbeAsync(string host, int port)
     {
         using var socket = new System.Net.Sockets.Socket(System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
+        DisableSynRetransmissions(socket);
         using var timeout = new CancellationTokenSource(TcpTimeout);
         var clock = System.Diagnostics.Stopwatch.StartNew();
         try
@@ -45,6 +46,23 @@ public static class NetworkProbe
         catch (Exception ex) when (ex is System.Net.Sockets.SocketException or OperationCanceledException)
         {
             return null;
+        }
+    }
+
+    // SIO_TCP_INITIAL_RTO + TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS : sans ça, Windows retente le SYN après un refus
+    // (RST) et ne signale l'échec qu'au bout d'environ 1 s — la mesure serait celle des réessais, pas l'aller-retour.
+    private const int SioTcpInitialRto = unchecked((int)0x98000011);
+    private static readonly byte[] NoSynRetransmissions = [0xFF, 0xFF, 0xFE, 0x00]; // Rtt = non précisé, MaxSyn = aucun
+
+    private static void DisableSynRetransmissions(System.Net.Sockets.Socket socket)
+    {
+        try
+        {
+            socket.IOControl(SioTcpInitialRto, NoSynRetransmissions, null);
+        }
+        catch (System.Net.Sockets.SocketException)
+        {
+            // Option absente (ancienne version de Windows) : la mesure reste possible, juste moins précise sur un refus.
         }
     }
 
