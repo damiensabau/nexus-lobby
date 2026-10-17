@@ -29,6 +29,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 UninstallDisplayIcon={app}\App\VpnClient.App.exe
+SetupIconFile=..\src\VpnClient.App\Resources\app.ico
 
 [Languages]
 Name: "fr"; MessagesFile: "compiler:Languages\French.isl"

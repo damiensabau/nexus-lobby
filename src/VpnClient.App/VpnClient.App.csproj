@@ -18,6 +18,9 @@
   <ItemGroup>
     <!-- Drapeaux (flagcdn.com, domaine public), embarqués : affichage hors ligne. -->
     <Resource Include="Resources\Flags\*.png" />
+    <!-- Logo (fond transparent) et icône multi-tailles 16→256 px, générés par tools/logo. -->
+    <Resource Include="Resources\logo.png" />
+    <Resource Include="Resources\app.ico" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -28,6 +31,7 @@
     <UseWPF>true</UseWPF>
     <!-- Icône de la zone de notification (NotifyIcon). -->
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Resources\app.ico</ApplicationIcon>
   </PropertyGroup>
 
 </Project>

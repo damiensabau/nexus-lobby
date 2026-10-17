@@ -9,6 +9,7 @@
                  mc:Ignorable="d"
                  d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
                  Title="NEXUS LOBBY"
+                 Icon="pack://application:,,,/VpnClient.App;component/Resources/app.ico"
                  Width="1240" Height="760" MinWidth="1040" MinHeight="660"
                  WindowStartupLocation="CenterScreen"
                  ExtendsContentIntoTitleBar="True"
@@ -209,7 +210,7 @@
 
         <ui:TitleBar Grid.Row="0" Title="NEXUS LOBBY · Lobbies faciles Warzone &amp; multijoueur" Background="{StaticResource Panel}">
             <ui:TitleBar.Icon>
-                <ui:SymbolIcon Symbol="TargetArrow24" Foreground="{StaticResource Neon}" />
+                <ui:ImageIcon Source="pack://application:,,,/VpnClient.App;component/Resources/logo.png" Width="20" Height="20" />
             </ui:TitleBar.Icon>
         </ui:TitleBar>
 
