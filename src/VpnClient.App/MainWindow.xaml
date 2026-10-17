@@ -207,7 +207,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="NEXUS LOBBY · Lobbies faciles en multijoueur" Background="{StaticResource Panel}">
+        <ui:TitleBar Grid.Row="0" Title="NEXUS LOBBY · Lobbies faciles Warzone &amp; multijoueur" Background="{StaticResource Panel}">
             <ui:TitleBar.Icon>
                 <ui:SymbolIcon Symbol="TargetArrow24" Foreground="{StaticResource Neon}" />
             </ui:TitleBar.Icon>
