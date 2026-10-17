@@ -7,6 +7,8 @@
 
 🇫🇷 [Version française](README.md)
 
+![NEXUS LOBBY: world map, best lobbies right now and regions grouped by country](docs/screenshots/accueil.png)
+
 **Region switcher for online gaming**: connect in one click to a VPN server in another country to play in lobbies
 that are often quieter. The app scores every region live (local time, player population, ping) and suggests the
 best one right now. Built for online shooters such as *Call of Duty: Warzone* and *Call of Duty* multiplayer.
@@ -24,6 +26,14 @@ best one right now. Built for online shooters such as *Call of Duty: Warzone* an
 > *Call of Duty* and *Warzone* are trademarks of Activision Publishing, Inc. Switching regions gives **no guarantee**
 > of easier lobbies: matchmaking mostly depends on connection quality and skill. Using a VPN to influence matchmaking
 > may break some games' terms of service: **use at your own risk**.
+
+## Preview
+
+| Switching region | Connected |
+|---|---|
+| ![Loading animation while connecting to Taipei](docs/screenshots/connexion.png) | ![“You're now connected!” message and session traffic](docs/screenshots/connecte.png) |
+
+*Screenshots taken with the demo servers (development mode).*
 
 ## Install
 
