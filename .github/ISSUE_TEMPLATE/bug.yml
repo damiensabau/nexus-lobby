@@ -1,0 +1,40 @@
+name: Bug
+description: Quelque chose ne marche pas comme prévu
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci ! **Faille de sécurité ?** N'ouvre pas d'issue : voir SECURITY.md.
+        **Ne colle jamais le contenu d'un profil VPN** (.conf / .ovpn) : il contient tes clés privées.
+  - type: textarea
+    id: what
+    attributes:
+      label: Ce qui se passe
+      description: Ce que tu as fait, ce que tu attendais, ce qui s'est passé (message d'erreur, capture…).
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Étapes pour reproduire
+      placeholder: |
+        1. Ajouter une région WireGuard…
+        2. Cliquer sur « Meilleur lobby maintenant »…
+  - type: input
+    id: version
+    attributes:
+      label: Version de NEXUS LOBBY
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: protocol
+    attributes:
+      label: Protocole
+      options: [WireGuard, OpenVPN, Les deux, Sans rapport]
+  - type: input
+    id: windows
+    attributes:
+      label: Version de Windows
+      placeholder: "Windows 11 23H2"

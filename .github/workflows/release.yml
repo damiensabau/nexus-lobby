@@ -1,0 +1,38 @@
+name: Release
+
+# Pousser un tag « v0.2.0 » construit l'installateur et le publie dans une Release GitHub (brouillon).
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Tests
+        run: dotnet test tests/VpnClient.Tests -c Release
+
+      - name: Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Publication + installateur
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          ./scripts/publish.ps1 -Version $version -Installer
+
+      - name: Release (brouillon)
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: dist/NexusLobby-Setup-*.exe
+          generate_release_notes: true

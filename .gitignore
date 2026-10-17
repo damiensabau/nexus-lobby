@@ -1,0 +1,27 @@
+# Build
+bin/
+obj/
+publish/
+dist/
+TestResults/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Profils VPN : contiennent des clés privées et des identifiants. Ne JAMAIS les commiter.
+# (Les tests utilisent des profils écrits dans le code, avec des clés factices.)
+*.conf
+*.ovpn
+*.conf.dpapi
+*.key
+*.p12
+*.pfx
+*.pem
+
+# Divers
+*.log
+Thumbs.db

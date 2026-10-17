@@ -1,0 +1,1163 @@
+<ui:FluentWindow x:Class="VpnClient.App.MainWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 xmlns:vm="clr-namespace:VpnClient.App.ViewModels"
+                 xmlns:conv="clr-namespace:VpnClient.App.Converters"
+                 mc:Ignorable="d"
+                 d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+                 Title="NEXUS LOBBY"
+                 Width="1240" Height="760" MinWidth="1040" MinHeight="660"
+                 WindowStartupLocation="CenterScreen"
+                 ExtendsContentIntoTitleBar="True"
+                 WindowBackdropType="None"
+                 WindowCornerPreference="Round"
+                 Background="{StaticResource BgDeep}">
+
+    <ui:FluentWindow.Resources>
+        <!-- Bouton principal (dégradé façon « Changer l'emplacement ») -->
+        <Style x:Key="HeroButton" TargetType="Button">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Height" Value="50" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="{StaticResource AccentGradient}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" CornerRadius="12" Background="{TemplateBinding Background}">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#6366F1" BlurRadius="24" ShadowDepth="0" Opacity="0.55" />
+                            </Border.Effect>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.9" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.78" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsIdle}" Value="False">
+                    <Setter Property="Background" Value="{StaticResource DangerGradient}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Petit bouton contour (CONNECTER / CONNECTÉ) -->
+        <Style x:Key="PillButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#E2E8F0" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="12,5" />
+            <Setter Property="BorderBrush" Value="#3A4766" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" CornerRadius="14" BorderThickness="1"
+                                BorderBrush="{TemplateBinding BorderBrush}" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#22304F" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="Caption" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+        </Style>
+        <!-- Dossier repliable : en-tête cliquable + chevron -->
+        <Style x:Key="FolderExpander" TargetType="Expander">
+            <Setter Property="IsExpanded" Value="True" />
+            <EventSetter Event="Loaded" Handler="OnFolderLoaded" />
+            <EventSetter Event="Expanded" Handler="OnFolderToggled" />
+            <EventSetter Event="Collapsed" Handler="OnFolderToggled" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <StackPanel>
+                            <ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          Cursor="Hand" Focusable="False">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Head" Background="Transparent" CornerRadius="8" Padding="8,7">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <ui:SymbolIcon x:Name="Chevron" Symbol="ChevronRight20" FontSize="14"
+                                                               Foreground="{StaticResource TextMuted}" RenderTransformOrigin="0.5,0.5">
+                                                    <ui:SymbolIcon.RenderTransform>
+                                                        <RotateTransform />
+                                                    </ui:SymbolIcon.RenderTransform>
+                                                </ui:SymbolIcon>
+                                                <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Chevron" Property="RenderTransform">
+                                                    <Setter.Value>
+                                                        <RotateTransform Angle="90" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Head" Property="Background" Value="#101A2E" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                                <ContentPresenter Content="{TemplateBinding Header}" />
+                            </ToggleButton>
+                            <ContentPresenter x:Name="Body" Visibility="Collapsed" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="Body" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Niveau 1 : dossier pays -->
+        <Style x:Key="CountryGroupStyle" TargetType="GroupItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GroupItem">
+                        <Expander Style="{StaticResource FolderExpander}" Margin="0,2,0,0">
+                            <Expander.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Style="{StaticResource Flag}" Width="30" Height="20" Tag="{Binding Name.Code}"
+                                            ToolTip="{Binding Name.Name}" />
+                                    <TextBlock Text="{Binding Name.Name}" Margin="10,0,0,0" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="#E5E9F2" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding ItemCount, StringFormat=({0})}" Margin="6,0,0,0" FontSize="12"
+                                               Foreground="{StaticResource TextDim}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Expander.Header>
+                            <ItemsPresenter Margin="10,0,0,0" />
+                        </Expander>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Niveau 2 : sous-dossier ville (seulement si le pays a plusieurs serveurs) -->
+        <Style x:Key="CityGroupStyle" TargetType="GroupItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GroupItem">
+                        <Expander Style="{StaticResource FolderExpander}">
+                            <Expander.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon Symbol="Folder20" FontSize="15" Foreground="{StaticResource Amber}" />
+                                    <TextBlock Text="{Binding Name}" Margin="7,0,0,0" FontSize="12" FontWeight="SemiBold"
+                                               Foreground="#CBD5E1" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding ItemCount, StringFormat=({0})}" Margin="6,0,0,0" FontSize="11"
+                                               Foreground="{StaticResource TextDim}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Expander.Header>
+                            <ItemsPresenter Margin="10,0,0,0" />
+                        </Expander>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FlatGroupStyle" TargetType="GroupItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GroupItem">
+                        <ItemsPresenter />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <conv:CityGroupStyleSelector x:Key="CityGroupSelector"
+                                     WithHeader="{StaticResource CityGroupStyle}"
+                                     WithoutHeader="{StaticResource FlatGroupStyle}" />
+    </ui:FluentWindow.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="NEXUS LOBBY · Lobbies faciles en multijoueur" Background="{StaticResource Panel}">
+            <ui:TitleBar.Icon>
+                <ui:SymbolIcon Symbol="TargetArrow24" Foreground="{StaticResource Neon}" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="380" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ═════════════ Panneau gauche ═════════════ -->
+            <Border Grid.Column="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Stroke}" BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- État de protection -->
+                    <StackPanel Grid.Row="0" Margin="24,20,24,0">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon FontSize="22" Foreground="{Binding State, Converter={StaticResource StateToBrush}}">
+                                <ui:SymbolIcon.Style>
+                                    <Style TargetType="ui:SymbolIcon">
+                                        <Setter Property="Symbol" Value="Home24" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                                <Setter Property="Symbol" Value="TargetArrow24" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:SymbolIcon.Style>
+                            </ui:SymbolIcon>
+                            <Border Style="{StaticResource Flag}" Width="27" Height="18" Margin="10,0,0,0"
+                                    Tag="{Binding ActiveServer.CountryCode}"
+                                    Visibility="{Binding IsIdle, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <TextBlock Text="{Binding ProtectionTitle}" Margin="10,0,0,0" FontSize="18" FontWeight="Bold"
+                                       Foreground="{Binding State, Converter={StaticResource StateToBrush}}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding VisibleCountryLine}" Margin="32,6,0,0" Style="{StaticResource Caption}" />
+                    </StackPanel>
+
+                    <!-- Bouton principal + identifiants -->
+                    <StackPanel Grid.Row="1" Margin="24,20,24,0">
+                        <Button Style="{StaticResource HeroButton}" Command="{Binding MainActionCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Symbol="Trophy24" FontSize="20" Foreground="White" Margin="0,0,10,0" />
+                                <TextBlock Text="{Binding MainActionLabel}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Text="{Binding QuickConnectHint}" HorizontalAlignment="Center" Margin="0,8,0,0"
+                                   Style="{StaticResource Caption}"
+                                   Visibility="{Binding IsIdle, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock Text="{Binding StatusMessage}" HorizontalAlignment="Center" Margin="0,8,0,0"
+                                   Style="{StaticResource Caption}"
+                                   Visibility="{Binding IsIdle, Converter={StaticResource InverseBoolToVisibility}}" />
+
+                        <StackPanel Margin="0,12,0,0" Visibility="{Binding NeedsCredentials, Converter={StaticResource BoolToVisibility}}">
+                            <ui:TextBox PlaceholderText="Identifiant OpenVPN" Icon="{ui:SymbolIcon Person24}"
+                                        Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}" />
+                            <ui:PasswordBox Margin="0,8,0,0" PlaceholderText="Mot de passe" Icon="{ui:SymbolIcon Key24}"
+                                            Password="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Recherche -->
+                    <Grid Grid.Row="2" Margin="24,22,24,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextDim}" VerticalAlignment="Center">
+                            <Run Text="RÉGIONS" /><Run Text="{Binding Servers.Count, Mode=OneWay, StringFormat={} ({0})}" FontWeight="Normal" />
+                        </TextBlock>
+                        <!-- Tri : un clic passe au mode suivant (score → ping → A→Z) -->
+                        <Button Grid.Column="1" Style="{StaticResource PillButton}" Padding="10,4"
+                                Command="{Binding CycleSortCommand}" ToolTip="Changer le tri (score, ping, A→Z)">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Symbol="ArrowSortDownLines20" FontSize="14" Foreground="{StaticResource Neon}" />
+                                <TextBlock Text="{Binding SortLabel}" Margin="6,0,0,0" FontSize="11" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <Grid Grid.Row="3">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <ui:TextBox Margin="24,0,24,10" PlaceholderText="Rechercher une région, un pays…"
+                                    Icon="{ui:SymbolIcon Search24}"
+                                    Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <!-- Liste des serveurs -->
+                        <ListBox Grid.Row="1" ItemsSource="{Binding ServersView}" SelectedItem="{Binding SelectedServer}"
+                                 Background="Transparent" BorderThickness="0" Padding="12,0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.GroupStyle>
+                                <GroupStyle ContainerStyle="{StaticResource CountryGroupStyle}" />
+                                <GroupStyle ContainerStyleSelector="{StaticResource CityGroupSelector}" />
+                            </ListBox.GroupStyle>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="Row" CornerRadius="10" Padding="10,8" Margin="0,1"
+                                                        Background="Transparent" BorderThickness="1" BorderBrush="Transparent">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Row" Property="Background" Value="{StaticResource PanelHover}" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="Row" Property="Background" Value="{StaticResource PanelAlt}" />
+                                                        <Setter TargetName="Row" Property="BorderBrush" Value="#2E3D63" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:ServerItem}">
+                                    <Grid Background="Transparent"
+                                          Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}">
+                                        <Grid.ContextMenu>
+                                            <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem Header="Changer la région" Command="{Binding ChangeLocationCommand}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                <MenuItem Header="Supprimer" Command="{Binding DeleteServerCommand}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            </ContextMenu>
+                                        </Grid.ContextMenu>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.ToolTip>
+                                            <TextBlock>
+                                                <Run Text="{Binding LobbyGrade, Mode=OneWay}" FontWeight="Bold" /><Run Text=" · " /><Run Text="{Binding LobbyReason, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </Grid.ToolTip>
+
+                                        <Border Style="{StaticResource Flag}" Width="27" Height="18" Tag="{Binding CountryCode}"
+                                                VerticalAlignment="Center" />
+
+                                        <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding ListTitle}" FontSize="14" FontWeight="SemiBold"
+                                                       Foreground="#E5E9F2" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding ListSubtitle}" FontSize="11" Foreground="{StaticResource TextDim}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,10,0">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Border CornerRadius="4" Padding="5,0" Margin="0,0,8,0" BorderThickness="1"
+                                                        BorderBrush="{Binding LobbyScoreBrush}">
+                                                    <TextBlock Text="{Binding LobbyScoreText}" FontSize="11" FontWeight="Bold"
+                                                               Foreground="{Binding LobbyScoreBrush}" />
+                                                </Border>
+                                                <Ellipse Width="7" Height="7" Fill="{Binding PingBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding PingText}" FontSize="12" Foreground="{Binding PingBrush}" />
+                                            </StackPanel>
+                                            <TextBlock HorizontalAlignment="Right" FontSize="11" Foreground="{Binding LobbyBrush}"
+                                                       ToolTip="Heure locale de la région. La nuit sur place, moins de joueurs : lobbies souvent plus faciles.">
+                                                <Run Text="{Binding LocalTimeText, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding LobbyLabel, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </StackPanel>
+
+                                        <Button Grid.Column="3" Style="{StaticResource PillButton}"
+                                                Command="{Binding DataContext.ConnectServerCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                CommandParameter="{Binding}">
+                                            <TextBlock>
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="JOUER" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                <Setter Property="Text" Value="ANNULER" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                                                <Setter Property="Text" Value="ACTIVE" />
+                                                                <Setter Property="Foreground" Value="{StaticResource Green}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- Liste vide -->
+                        <StackPanel Grid.Row="1" VerticalAlignment="Center" Margin="32,0">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Servers.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <ui:SymbolIcon Symbol="Globe24" FontSize="40" Foreground="{StaticResource TextDim}" />
+                            <TextBlock Text="Aucune région" HorizontalAlignment="Center" Margin="0,10,0,4"
+                                       FontWeight="SemiBold" Foreground="#E5E9F2" />
+                            <TextBlock Style="{StaticResource Caption}" TextAlignment="Center" TextWrapping="Wrap"
+                                       Text="Ajoute tes fichiers WireGuard (.conf) ou OpenVPN (.ovpn), un par pays. Astuce : les régions en heure creuse (la nuit sur place) donnent souvent des lobbies plus faciles." />
+                        </StackPanel>
+
+                        <!-- Panneau d'emplacement (import / modification) -->
+                        <Border Grid.Row="0" Grid.RowSpan="2" Margin="16,0,16,8" Padding="18" CornerRadius="14"
+                                Background="{StaticResource PanelAlt}" BorderBrush="#2E3D63" BorderThickness="1"
+                                VerticalAlignment="Top"
+                                Visibility="{Binding IsLocationPanelOpen, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding LocationPanelTitle}" FontSize="16" FontWeight="SemiBold" Foreground="#E5E9F2" />
+                                <TextBlock Text="{Binding LocationPanelFile}" Style="{StaticResource Caption}" Margin="0,4,0,14"
+                                           TextTrimming="CharacterEllipsis" />
+                                <ComboBox ItemsSource="{Binding AllLocations}" SelectedItem="{Binding LocationPanelChoice}"
+                                          MaxDropDownHeight="320">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Style="{StaticResource Flag}" Width="24" Height="16" Tag="{Binding CountryCode}" />
+                                                <TextBlock Text="{Binding Label}" Margin="10,0,0,0" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <TextBlock Style="{StaticResource Caption}" Margin="0,8,0,0" TextWrapping="Wrap"
+                                           Text="La région place le serveur sur la carte et donne son heure locale. Elle est devinée depuis le nom du fichier quand c'est possible." />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                                    <ui:Button Content="Annuler" Command="{Binding CancelLocationCommand}" />
+                                    <ui:Button Content="Valider" Appearance="Primary" Margin="8,0,0,0"
+                                               Command="{Binding ConfirmLocationCommand}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Import -->
+                    <Border Grid.Row="4" BorderBrush="{StaticResource Stroke}" BorderThickness="0,1,0,0" Padding="24,14">
+                        <Grid>
+                            <ui:Button Content="Ajouter une région" Icon="{ui:SymbolIcon Add24}" HorizontalAlignment="Stretch"
+                                       Command="{Binding ImportCommand}" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- ═════════════ Carte ═════════════ -->
+            <Grid Grid.Column="1" ClipToBounds="True">
+                <Grid.Background>
+                    <RadialGradientBrush Center="0.5,0.42" GradientOrigin="0.5,0.42" RadiusX="0.75" RadiusY="0.8">
+                        <GradientStop Color="#0E2140" Offset="0" />
+                        <GradientStop Color="#081325" Offset="0.55" />
+                        <GradientStop Color="{StaticResource BgDeepColor}" Offset="1" />
+                    </RadialGradientBrush>
+                </Grid.Background>
+
+                <!-- Anneaux décoratifs -->
+                <Viewbox Stretch="UniformToFill" Opacity="0.35" IsHitTestVisible="False">
+                    <Grid Width="1000" Height="700">
+                        <Ellipse Width="980" Height="560" Stroke="#1D3A66" StrokeThickness="1" />
+                        <Ellipse Width="760" Height="430" Stroke="#1D3A66" StrokeThickness="1" StrokeDashArray="4 6" />
+                        <Ellipse Width="520" Height="300" Stroke="#1D3A66" StrokeThickness="1" />
+                    </Grid>
+                </Viewbox>
+
+                <!-- Carte du monde + repères -->
+                <Viewbox Margin="28,90,28,210" Stretch="Uniform">
+                    <Grid Width="1000" Height="394.444">
+                        <Path Data="{StaticResource WorldMapGeometry}" Stroke="#4CC9F0" StrokeThickness="0.7"
+                              StrokeLineJoin="Round">
+                            <Path.Fill>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="#16406E" Offset="0" />
+                                    <GradientStop Color="#0E2A4D" Offset="1" />
+                                </LinearGradientBrush>
+                            </Path.Fill>
+                            <Path.Effect>
+                                <DropShadowEffect Color="#38BDF8" BlurRadius="14" ShadowDepth="0" Opacity="0.7" />
+                            </Path.Effect>
+                            <Path.CacheMode>
+                                <BitmapCache RenderAtScale="2" />
+                            </Path.CacheMode>
+                        </Path>
+
+                        <!-- Pays où tu as au moins un serveur : violet ; sélectionné : orange ; connecté : vert -->
+                        <ItemsControl ItemsSource="{Binding CountryHighlights}" IsHitTestVisible="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Grid />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:CountryHighlight}">
+                                    <Path x:Name="Shape" Data="{Binding Geometry}" Fill="#596366F1" Stroke="#A5B4FC"
+                                          StrokeThickness="0.9" StrokeLineJoin="Round">
+                                        <Path.Effect>
+                                            <DropShadowEffect Color="#818CF8" BlurRadius="10" ShadowDepth="0" Opacity="0.9" />
+                                        </Path.Effect>
+                                    </Path>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                            <Setter TargetName="Shape" Property="Fill" Value="#66F59E0B" />
+                                            <Setter TargetName="Shape" Property="Stroke" Value="#FCD34D" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                            <Setter TargetName="Shape" Property="Fill" Value="#6622C55E" />
+                                            <Setter TargetName="Shape" Property="Stroke" Value="#4ADE80" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <ItemsControl ItemsSource="{Binding Markers}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Canvas />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemContainerStyle>
+                                <Style TargetType="ContentPresenter">
+                                    <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                    <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="Panel.ZIndex" Value="1" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                            <Setter Property="Panel.ZIndex" Value="2" />
+                                        </DataTrigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Panel.ZIndex" Value="3" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ItemsControl.ItemContainerStyle>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:MapMarker}">
+                                    <Button Width="140" Height="46" Cursor="Hand" ToolTip="{Binding Location.Label}"
+                                            Command="{Binding DataContext.SelectMarkerCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <!-- Pas de fond : seuls le point et l'étiquette réagissent à la souris. -->
+                                                <Grid>
+                                                    <!-- Étiquette -->
+                                                    <Border x:Name="Chip" HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                            CornerRadius="4" Padding="6,1" Background="#E60B1630"
+                                                            BorderBrush="#4CC9F0" BorderThickness="0.8" Visibility="Hidden">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Border Style="{StaticResource Flag}" Width="15" Height="10" CornerRadius="2"
+                                                                    Margin="0,0,4,0" VerticalAlignment="Center" Tag="{Binding Location.CountryCode}" />
+                                                            <TextBlock x:Name="ChipText" Text="{Binding Label}" FontSize="11"
+                                                                       FontWeight="SemiBold" Foreground="#CFEFFF" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <Rectangle x:Name="Stem" Width="1" Height="12" Fill="#4CC9F0" Visibility="Hidden"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,21,0,0" />
+                                                    <!-- Halo pulsé (serveur actif) -->
+                                                    <Ellipse x:Name="Pulse" Width="22" Height="22" Fill="#2222C55E" Stroke="#22C55E"
+                                                             StrokeThickness="0.8" HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                             Margin="0,28,0,0" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                                                        <Ellipse.RenderTransform>
+                                                            <ScaleTransform />
+                                                        </Ellipse.RenderTransform>
+                                                    </Ellipse>
+                                                    <Ellipse x:Name="Dot" Width="10" Height="10" Fill="#38BDF8"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,34,0,0">
+                                                        <Ellipse.Effect>
+                                                            <DropShadowEffect Color="#38BDF8" BlurRadius="10" ShadowDepth="0" Opacity="1" />
+                                                        </Ellipse.Effect>
+                                                    </Ellipse>
+                                                </Grid>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Chip" Property="Visibility" Value="Visible" />
+                                                        <Setter TargetName="Stem" Property="Visibility" Value="Visible" />
+                                                    </Trigger>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter TargetName="Chip" Property="Visibility" Value="Visible" />
+                                                        <Setter TargetName="Stem" Property="Visibility" Value="Visible" />
+                                                        <Setter TargetName="Chip" Property="Background" Value="#F2F59E0B" />
+                                                        <Setter TargetName="Chip" Property="BorderBrush" Value="#FCD34D" />
+                                                        <Setter TargetName="ChipText" Property="Foreground" Value="#1A1205" />
+                                                        <Setter TargetName="Stem" Property="Fill" Value="#FCD34D" />
+                                                        <Setter TargetName="Dot" Property="Fill" Value="#FBBF24" />
+                                                        <Setter TargetName="Dot" Property="Effect">
+                                                            <Setter.Value>
+                                                                <DropShadowEffect Color="#F59E0B" BlurRadius="10" ShadowDepth="0" Opacity="1" />
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                        <Setter TargetName="Chip" Property="Visibility" Value="Visible" />
+                                                        <Setter TargetName="Stem" Property="Visibility" Value="Visible" />
+                                                        <Setter TargetName="Chip" Property="Background" Value="#F216A34A" />
+                                                        <Setter TargetName="Chip" Property="BorderBrush" Value="#4ADE80" />
+                                                        <Setter TargetName="ChipText" Property="Foreground" Value="White" />
+                                                        <Setter TargetName="Stem" Property="Fill" Value="#4ADE80" />
+                                                        <Setter TargetName="Dot" Property="Fill" Value="#4ADE80" />
+                                                        <Setter TargetName="Dot" Property="Effect">
+                                                            <Setter.Value>
+                                                                <DropShadowEffect Color="#22C55E" BlurRadius="12" ShadowDepth="0" Opacity="1" />
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                        <DataTrigger.EnterActions>
+                                                            <BeginStoryboard x:Name="PulseAnim">
+                                                                <Storyboard RepeatBehavior="Forever">
+                                                                    <DoubleAnimation Storyboard.TargetName="Pulse" Storyboard.TargetProperty="Opacity"
+                                                                                     From="0.9" To="0" Duration="0:0:1.6" />
+                                                                    <DoubleAnimation Storyboard.TargetName="Pulse"
+                                                                                     Storyboard.TargetProperty="RenderTransform.ScaleX"
+                                                                                     From="0.6" To="2.2" Duration="0:0:1.6" />
+                                                                    <DoubleAnimation Storyboard.TargetName="Pulse"
+                                                                                     Storyboard.TargetProperty="RenderTransform.ScaleY"
+                                                                                     From="0.6" To="2.2" Duration="0:0:1.6" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </DataTrigger.EnterActions>
+                                                        <DataTrigger.ExitActions>
+                                                            <StopStoryboard BeginStoryboardName="PulseAnim" />
+                                                        </DataTrigger.ExitActions>
+                                                    </DataTrigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </Viewbox>
+
+                <!-- Bandeau d'état (haut, droite) -->
+                <Border VerticalAlignment="Top" HorizontalAlignment="Right" Padding="28,12,28,14"
+                        CornerRadius="0,0,0,22" Background="{StaticResource Panel}"
+                        BorderBrush="{StaticResource Stroke}" BorderThickness="1,0,0,1">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <ui:SymbolIcon FontSize="22" Foreground="{Binding State, Converter={StaticResource StateToBrush}}">
+                                <ui:SymbolIcon.Style>
+                                    <Style TargetType="ui:SymbolIcon">
+                                        <Setter Property="Symbol" Value="LockOpen24" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                                <Setter Property="Symbol" Value="LockClosed24" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:SymbolIcon.Style>
+                            </ui:SymbolIcon>
+                            <TextBlock Text="{Binding BannerText}" Margin="8,0,0,0" FontSize="22" FontWeight="Bold"
+                                       Foreground="{Binding State, Converter={StaticResource StateToBrush}}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
+                            <Border Style="{StaticResource Flag}" Width="21" Height="14" Margin="0,0,7,0"
+                                    Tag="{Binding ActiveServer.CountryCode}"
+                                    Visibility="{Binding IsIdle, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <TextBlock Text="{Binding ActiveServer.Location.Label, FallbackValue='Tu joues dans ta région habituelle', TargetNullValue='Tu joues dans ta région habituelle'}"
+                                       Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Suggestions en direct -->
+                <Border VerticalAlignment="Top" HorizontalAlignment="Left" Width="320" Margin="20,16,0,0" Padding="16,12"
+                        CornerRadius="14" Background="#E60D1424" BorderBrush="{StaticResource Stroke}" BorderThickness="1">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Symbol="Trophy24" FontSize="16" Foreground="{StaticResource Amber}" />
+                                <TextBlock Text="MEILLEURS LOBBIES EN CE MOMENT" Margin="8,0,0,0" FontSize="12" FontWeight="Bold"
+                                           Foreground="#E5E9F2" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <!-- Replier la carte pour voir l'Amérique du Nord dessous -->
+                            <ToggleButton HorizontalAlignment="Right" Margin="0,0,24,0" Cursor="Hand" Focusable="False"
+                                          ToolTip="Replier / déplier"
+                                          IsChecked="{Binding SuggestionsExpanded, Mode=TwoWay}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent">
+                                            <ui:SymbolIcon x:Name="Chevron" Symbol="ChevronUp20" FontSize="16"
+                                                           Foreground="{StaticResource TextMuted}" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsChecked" Value="False">
+                                                <Setter TargetName="Chevron" Property="Symbol" Value="ChevronDown20" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ui:SymbolIcon Symbol="Info24" FontSize="16" HorizontalAlignment="Right" Foreground="{StaticResource TextMuted}"
+                                           Cursor="Help" ToolTipService.ShowDuration="30000">
+                                <ui:SymbolIcon.ToolTip>
+                                    <ToolTip MaxWidth="340">
+                                        <TextBlock TextWrapping="Wrap">
+                                            Note sur 100, recalculée chaque minute :<LineBreak />
+                                            • Heure locale du serveur (45 %) : la nuit sur place, peu de joueurs.<LineBreak />
+                                            • Taille de la base de joueurs du pays (25 %, estimation).<LineBreak />
+                                            • Ton ping vers le serveur (20 %).<LineBreak />
+                                            • Jour de la semaine (10 %) : lundi à jeudi plus calmes.<LineBreak /><LineBreak />
+                                            Change de région avant de lancer le jeu. Rien n'est garanti : le matchmaking privilégie la connexion et le niveau.
+                                        </TextBlock>
+                                    </ToolTip>
+                                </ui:SymbolIcon.ToolTip>
+                            </ui:SymbolIcon>
+                        </Grid>
+
+                        <StackPanel Visibility="{Binding SuggestionsExpanded, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl ItemsSource="{Binding Suggestions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:ServerItem}">
+                                    <Grid Margin="0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="38" Height="38" CornerRadius="19" BorderThickness="2"
+                                                BorderBrush="{Binding LobbyScoreBrush}" Background="#121B2F">
+                                            <TextBlock Text="{Binding LobbyScoreText}" FontWeight="Bold" FontSize="13"
+                                                       Foreground="{Binding LobbyScoreBrush}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Style="{StaticResource Flag}" Width="22" Height="15" Margin="0,0,7,0"
+                                                        VerticalAlignment="Center" Tag="{Binding CountryCode}" />
+                                                <TextBlock FontWeight="SemiBold" Foreground="#E5E9F2" TextTrimming="CharacterEllipsis">
+                                                    <Run Text="{Binding Title, Mode=OneWay}" /><Run Text=" · " Foreground="{StaticResource TextDim}" /><Run Text="{Binding LobbyGrade, Mode=OneWay}" Foreground="{Binding LobbyScoreBrush, Mode=OneWay}" />
+                                                </TextBlock>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding LobbyReason}" FontSize="11" Foreground="{StaticResource TextMuted}"
+                                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding LobbyReason}" />
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Style="{StaticResource PillButton}" Content="JOUER"
+                                                Command="{Binding DataContext.ConnectServerCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap"
+                                   Text="Ajoute des régions (un fichier .conf ou .ovpn par pays) pour recevoir des suggestions."
+                                   Visibility="{Binding HasSuggestions, Converter={StaticResource InverseBoolToVisibility}}" />
+
+                        <Border Margin="0,10,0,0" Padding="10,8" CornerRadius="8" Background="#14F59E0B"
+                                BorderBrush="#40F59E0B" BorderThickness="1"
+                                Visibility="{Binding HasMissingSuggestion, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding MissingSuggestion}" FontSize="11" Foreground="#FCD34D" TextWrapping="Wrap" />
+                        </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ═════ Chargement : connexion / déconnexion ═════ -->
+                <Grid Panel.ZIndex="10" Background="#C8070C18"
+                      Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                    <Grid.Triggers>
+                        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="Wave1" Storyboard.TargetProperty="Opacity"
+                                                     From="0.8" To="0" Duration="0:0:2.4" BeginTime="0:0:0" RepeatBehavior="Forever" />
+                                    <DoubleAnimation Storyboard.TargetName="Wave1" Storyboard.TargetProperty="RenderTransform.ScaleX"
+                                                     From="0.7" To="1.85" Duration="0:0:2.4" BeginTime="0:0:0" RepeatBehavior="Forever" />
+                                    <DoubleAnimation Storyboard.TargetName="Wave1" Storyboard.TargetProperty="RenderTransform.ScaleY"
+                                                     From="0.7" To="1.85" Duration="0:0:2.4" BeginTime="0:0:0" RepeatBehavior="Forever" />
+                                    <DoubleAnimation Storyboard.TargetName="Wave2" Storyboard.TargetProperty="Opacity"
+                                                     From="0.8" To="0" Duration="0:0:2.4" BeginTime="0:0:0.8" RepeatBehavior="Forever" />
+                                    <DoubleAnimation Storyboard.TargetName="Wave2" Storyboard.TargetProperty="RenderTransform.ScaleX"
+                                                     From="0.7" To="1.85" Duration="0:0:2.4" BeginTime="0:0:0.8" RepeatBehavior="Forever" />
+                                    <DoubleAnimation Storyboard.TargetName="Wave2" Storyboard.TargetProperty="RenderTransform.ScaleY"
+                                                     From="0.7" To="1.85" Duration="0:0:2.4" BeginTime="0:0:0.8" RepeatBehavior="Forever" />
+                                    <DoubleAnimation Storyboard.TargetName="Wave3" Storyboard.TargetProperty="Opacity"
+                                                     From="0.8" To="0" Duration="0:0:2.4" BeginTime="0:0:1.6" RepeatBehavior="Forever" />
+                                    <DoubleAnimation Storyboard.TargetName="Wave3" Storyboard.TargetProperty="RenderTransform.ScaleX"
+                                                     From="0.7" To="1.85" Duration="0:0:2.4" BeginTime="0:0:1.6" RepeatBehavior="Forever" />
+                                    <DoubleAnimation Storyboard.TargetName="Wave3" Storyboard.TargetProperty="RenderTransform.ScaleY"
+                                                     From="0.7" To="1.85" Duration="0:0:2.4" BeginTime="0:0:1.6" RepeatBehavior="Forever" />
+                                    <DoubleAnimation Storyboard.TargetName="SpinnerRotation" Storyboard.TargetProperty="Angle"
+                                                     From="0" To="360" Duration="0:0:1.1" RepeatBehavior="Forever" />
+                                    <DoubleAnimation Storyboard.TargetName="CoreGlow" Storyboard.TargetProperty="BlurRadius"
+                                                     From="18" To="42" Duration="0:0:0.9" AutoReverse="True" RepeatBehavior="Forever" />
+                                    <DoubleAnimation Storyboard.TargetName="Dot1" Storyboard.TargetProperty="Opacity"
+                                                     From="0.2" To="1" Duration="0:0:0.45" AutoReverse="True" RepeatBehavior="Forever" />
+                                    <DoubleAnimation Storyboard.TargetName="Dot2" Storyboard.TargetProperty="Opacity"
+                                                     From="0.2" To="1" Duration="0:0:0.45" BeginTime="0:0:0.15" AutoReverse="True" RepeatBehavior="Forever" />
+                                    <DoubleAnimation Storyboard.TargetName="Dot3" Storyboard.TargetProperty="Opacity"
+                                                     From="0.2" To="1" Duration="0:0:0.45" BeginTime="0:0:0.3" AutoReverse="True" RepeatBehavior="Forever" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </Grid.Triggers>
+
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <Grid Width="240" Height="240">
+                            <Ellipse x:Name="Wave1" Width="120" Height="120" Stroke="#38BDF8" StrokeThickness="2"
+                                     Opacity="0" RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.RenderTransform>
+                                    <ScaleTransform />
+                                </Ellipse.RenderTransform>
+                            </Ellipse>
+                            <Ellipse x:Name="Wave2" Width="120" Height="120" Stroke="#38BDF8" StrokeThickness="2"
+                                     Opacity="0" RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.RenderTransform>
+                                    <ScaleTransform />
+                                </Ellipse.RenderTransform>
+                            </Ellipse>
+                            <Ellipse x:Name="Wave3" Width="120" Height="120" Stroke="#38BDF8" StrokeThickness="2"
+                                     Opacity="0" RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.RenderTransform>
+                                    <ScaleTransform />
+                                </Ellipse.RenderTransform>
+                            </Ellipse>
+                            <!-- Anneau de fond + arc qui tourne -->
+                            <Ellipse Width="128" Height="128" Stroke="#1A2E52" StrokeThickness="6" />
+                            <Path Width="128" Height="128" StrokeThickness="6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Data="M 64,3 A 61,61 0 0 1 125,64" RenderTransformOrigin="0.5,0.5">
+                                <Path.Stroke>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#38BDF8" Offset="0" />
+                                        <GradientStop Color="#6366F1" Offset="1" />
+                                    </LinearGradientBrush>
+                                </Path.Stroke>
+                                <Path.RenderTransform>
+                                    <RotateTransform x:Name="SpinnerRotation" />
+                                </Path.RenderTransform>
+                            </Path>
+                            <!-- Cœur lumineux -->
+                            <Ellipse Width="88" Height="88" Fill="{StaticResource AccentGradient}">
+                                <Ellipse.Effect>
+                                    <DropShadowEffect x:Name="CoreGlow" Color="#6366F1" BlurRadius="24" ShadowDepth="0" Opacity="0.9" />
+                                </Ellipse.Effect>
+                            </Ellipse>
+                            <ui:SymbolIcon Symbol="Globe24" FontSize="40" Foreground="White"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+
+                        <TextBlock Text="{Binding OverlayTitle}" FontSize="22" FontWeight="Bold" Foreground="#E5E9F2"
+                                   HorizontalAlignment="Center" Margin="0,8,0,0" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
+                            <TextBlock Text="{Binding StatusMessage}" FontSize="14" Foreground="{StaticResource Neon}" />
+                            <Ellipse x:Name="Dot1" Width="5" Height="5" Fill="{StaticResource Neon}" Margin="8,4,0,0" />
+                            <Ellipse x:Name="Dot2" Width="5" Height="5" Fill="{StaticResource Neon}" Margin="4,4,0,0" />
+                            <Ellipse x:Name="Dot3" Width="5" Height="5" Fill="{StaticResource Neon}" Margin="4,4,0,0" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding OverlayHint}" Style="{StaticResource Caption}" HorizontalAlignment="Center" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- ═════ Message : connecté / déconnecté ═════ -->
+                <Border Panel.ZIndex="15" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,132,0,0"
+                        Width="460" CornerRadius="16" Padding="18,16" Background="#F70D1424" BorderThickness="1.5"
+                        Opacity="0" IsHitTestVisible="{Binding IsToastVisible}">
+                    <Border.RenderTransform>
+                        <TranslateTransform Y="-24" />
+                    </Border.RenderTransform>
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="BorderBrush" Value="#F59E0B" />
+                            <Setter Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect Color="#F59E0B" BlurRadius="30" ShadowDepth="0" Opacity="0.35" />
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsToastSuccess}" Value="True">
+                                    <Setter Property="BorderBrush" Value="#22C55E" />
+                                    <Setter Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect Color="#22C55E" BlurRadius="30" ShadowDepth="0" Opacity="0.45" />
+                                        </Setter.Value>
+                                    </Setter>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsToastVisible}" Value="True">
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.25" />
+                                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Y" To="0" Duration="0:0:0.45">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <BackEase EasingMode="EaseOut" Amplitude="0.5" />
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.EnterActions>
+                                    <DataTrigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3" />
+                                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Y" To="-24" Duration="0:0:0.3" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.ExitActions>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="52" Height="52" CornerRadius="26" VerticalAlignment="Top">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#26F59E0B" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsToastSuccess}" Value="True">
+                                            <Setter Property="Background" Value="#2622C55E" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <ui:SymbolIcon FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <ui:SymbolIcon.Style>
+                                    <Style TargetType="ui:SymbolIcon">
+                                        <Setter Property="Symbol" Value="PlugDisconnected24" />
+                                        <Setter Property="Foreground" Value="#FBBF24" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsToastSuccess}" Value="True">
+                                                <Setter Property="Symbol" Value="Bot24" />
+                                                <Setter Property="Foreground" Value="#4ADE80" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:SymbolIcon.Style>
+                            </ui:SymbolIcon>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="14,2,8,0">
+                            <TextBlock Text="{Binding ToastTitle}" FontSize="18" FontWeight="Bold" Foreground="#F1F5F9" />
+                            <TextBlock Text="{Binding ToastMessage}" FontSize="13" Foreground="{StaticResource TextMuted}"
+                                       TextWrapping="Wrap" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <Button Grid.Column="2" VerticalAlignment="Top" Cursor="Hand" ToolTip="Fermer"
+                                Command="{Binding DismissToastCommand}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="Transparent" Padding="4">
+                                        <ui:SymbolIcon Symbol="Dismiss16" FontSize="14" Foreground="{StaticResource TextMuted}" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Alertes -->
+                <StackPanel Panel.ZIndex="20" VerticalAlignment="Top" HorizontalAlignment="Right" Width="340" Margin="0,92,16,0">
+                    <ui:InfoBar Title="{Binding ServiceUnavailableTitle, Mode=OneWay}" Severity="Warning" IsClosable="False"
+                                Message="{Binding ServiceUnavailableMessage, Mode=OneWay}"
+                                IsOpen="{Binding ServiceUnavailable, Mode=OneWay}" />
+                </StackPanel>
+
+                <!-- ═════ Erreur : message clair + action proposée (reste affichée jusqu'à fermeture) ═════ -->
+                <Border Panel.ZIndex="16" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,132,0,0"
+                        Width="480" CornerRadius="16" Padding="18,16" Background="#F7140D16" BorderBrush="#EF4444"
+                        BorderThickness="1.5" Opacity="0" IsHitTestVisible="{Binding HasError}">
+                    <Border.Effect>
+                        <DropShadowEffect Color="#EF4444" BlurRadius="30" ShadowDepth="0" Opacity="0.4" />
+                    </Border.Effect>
+                    <Border.RenderTransform>
+                        <TranslateTransform Y="-24" />
+                    </Border.RenderTransform>
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasError}" Value="True">
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2" />
+                                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Y" To="0" Duration="0:0:0.4">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <BackEase EasingMode="EaseOut" Amplitude="0.5" />
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <!-- Petite secousse pour attirer l'œil -->
+                                                <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="RenderTransform.X" BeginTime="0:0:0.35">
+                                                    <LinearDoubleKeyFrame KeyTime="0:0:0.05" Value="-6" />
+                                                    <LinearDoubleKeyFrame KeyTime="0:0:0.10" Value="6" />
+                                                    <LinearDoubleKeyFrame KeyTime="0:0:0.15" Value="-4" />
+                                                    <LinearDoubleKeyFrame KeyTime="0:0:0.20" Value="4" />
+                                                    <LinearDoubleKeyFrame KeyTime="0:0:0.25" Value="0" />
+                                                </DoubleAnimationUsingKeyFrames>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.EnterActions>
+                                    <DataTrigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
+                                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Y" To="-24" Duration="0:0:0.25" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.ExitActions>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="52" Height="52" CornerRadius="26" Background="#26EF4444" VerticalAlignment="Top">
+                            <ui:SymbolIcon Symbol="ErrorCircle24" FontSize="28" Foreground="#F87171"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="14,2,8,0">
+                            <TextBlock Text="{Binding ErrorTitle}" FontSize="18" FontWeight="Bold" Foreground="#F1F5F9" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding ErrorMessage}" FontSize="13" Foreground="{StaticResource TextMuted}"
+                                       TextWrapping="Wrap" Margin="0,4,0,0" />
+                            <ui:Button Content="{Binding ErrorActionLabel}" Appearance="Danger" Margin="0,12,0,0"
+                                       Command="{Binding ErrorActionCommand}"
+                                       Visibility="{Binding HasErrorAction, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" VerticalAlignment="Top" Cursor="Hand" ToolTip="Fermer"
+                                Command="{Binding DismissErrorCommand}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="Transparent" Padding="4">
+                                        <ui:SymbolIcon Symbol="Dismiss16" FontSize="14" Foreground="{StaticResource TextMuted}" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Session + débit (bas) -->
+                <Grid VerticalAlignment="Bottom" Margin="24,0,24,20" Height="170">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="280" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" CornerRadius="14" Padding="18,14" Background="#D90D1424"
+                            BorderBrush="{StaticResource Stroke}" BorderThickness="1">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.ColumnSpan="2" Text="Trafic de la session" FontWeight="Bold" Foreground="{StaticResource Green}" Margin="0,0,0,6" />
+                            <TextBlock Grid.Row="1" Text="Durée" Style="{StaticResource Caption}" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Duration}" Foreground="#E5E9F2" />
+                            <TextBlock Grid.Row="2" Text="Reçu" Style="{StaticResource Caption}" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Download}" Foreground="#E5E9F2" />
+                            <TextBlock Grid.Row="3" Text="Envoyé" Style="{StaticResource Caption}" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Upload}" Foreground="#E5E9F2" />
+                            <TextBlock Grid.Row="4" Text="Pays visible" Style="{StaticResource Caption}" />
+                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding VisibleCountry}" Foreground="#E5E9F2" />
+                            <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Orientation="Horizontal">
+                                <ui:SymbolIcon Symbol="ArrowDown24" FontSize="14" Foreground="{StaticResource Green}" />
+                                <TextBlock Text="{Binding DownSpeed}" Margin="4,0,16,0" Foreground="#E5E9F2" />
+                                <ui:SymbolIcon Symbol="ArrowUp24" FontSize="14" Foreground="{StaticResource Neon}" />
+                                <TextBlock Text="{Binding UpSpeed}" Margin="4,0,0,0" Foreground="#E5E9F2" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="2" CornerRadius="14" Padding="18,14" Background="#D90D1424"
+                            BorderBrush="{StaticResource Stroke}" BorderThickness="1">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="Débit" Style="{StaticResource Caption}" />
+                            <TextBlock Text="{Binding SpeedScale}" Style="{StaticResource Caption}" HorizontalAlignment="Right" />
+
+                            <Border Grid.Row="1" Margin="0,6" BorderBrush="{StaticResource Stroke}" BorderThickness="1" ClipToBounds="True">
+                                <Border.Background>
+                                    <!-- Quadrillage -->
+                                    <DrawingBrush TileMode="Tile" Viewport="0,0,24,24" ViewportUnits="Absolute">
+                                        <DrawingBrush.Drawing>
+                                            <GeometryDrawing Geometry="M0,0 L24,0 M0,0 L0,24">
+                                                <GeometryDrawing.Pen>
+                                                    <Pen Brush="#16223A" Thickness="1" />
+                                                </GeometryDrawing.Pen>
+                                            </GeometryDrawing>
+                                        </DrawingBrush.Drawing>
+                                    </DrawingBrush>
+                                </Border.Background>
+                                <Viewbox Stretch="Fill">
+                                    <Canvas Width="600" Height="100">
+                                        <Polygon Points="{Binding DownArea}">
+                                            <Polygon.Fill>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                    <GradientStop Color="#6622C55E" Offset="0" />
+                                                    <GradientStop Color="#0022C55E" Offset="1" />
+                                                </LinearGradientBrush>
+                                            </Polygon.Fill>
+                                        </Polygon>
+                                        <Polyline Points="{Binding DownLine}" Stroke="{StaticResource Green}" StrokeThickness="1.6" />
+                                        <Polyline Points="{Binding UpLine}" Stroke="{StaticResource Neon}" StrokeThickness="1.2"
+                                                  StrokeDashArray="3 2" />
+                                    </Canvas>
+                                </Viewbox>
+                            </Border>
+
+                            <Grid Grid.Row="2">
+                                <TextBlock Text="60 secondes" Style="{StaticResource Caption}" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Rectangle Width="12" Height="3" Fill="{StaticResource Green}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Réception" Margin="6,0,14,0" Style="{StaticResource Caption}" />
+                                    <Rectangle Width="12" Height="3" Fill="{StaticResource Neon}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Envoi" Margin="6,0,0,0" Style="{StaticResource Caption}" />
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</ui:FluentWindow>

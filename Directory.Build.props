@@ -1,0 +1,10 @@
+<Project>
+  <!-- Métadonnées communes à tous les projets de la solution. -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Product>NEXUS LOBBY</Product>
+    <Company>D4MNTV</Company>
+    <Copyright>Copyright (c) 2026 D4MNTV — PolyForm Noncommercial 1.0.0</Copyright>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+</Project>
