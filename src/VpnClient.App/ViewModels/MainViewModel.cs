@@ -35,6 +35,14 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _wasConnected;    // pour le message « on te perd déjà »
     private string? _lastConnectedTitle;
     private bool _commandInFlight; // connexion / déconnexion envoyée : pas de rafraîchissement auto entre-temps
+    private bool _userDisconnected = true;          // « Revenir à ma région » : pas de reconnexion automatique
+    private readonly List<DateTime> _autoReconnects = []; // au plus 3 reconnexions auto en 10 minutes
+
+    /// <summary>Préférences de l'utilisateur (%AppData%\NexusLobby\settings.json).</summary>
+    public UserSettings Settings { get; }
+
+    /// <summary>Notification Windows à afficher (zone de notification) : titre, message, succès ?</summary>
+    public event Action<string, string, bool>? SystemNotification;
 
     public ObservableCollection<ServerItem> Servers { get; } = [];
     public ObservableCollection<MapMarker> Markers { get; } = [];
@@ -47,8 +55,18 @@ public sealed partial class MainViewModel : ObservableObject
     public ICollectionView ServersView { get; }
     public IReadOnlyList<Location> AllLocations => Locations.All;
 
-    public MainViewModel()
+    public MainViewModel(UserSettings? settings = null)
     {
+        Settings = settings ?? UserSettings.Load();
+        _sortMode = Settings.SortMode;
+        _suggestionsExpanded = Settings.SuggestionsExpanded;
+        _minimizeToTray = Settings.MinimizeToTray;
+        _notificationsEnabled = Settings.Notifications;
+        _autoReconnect = Settings.AutoReconnect;
+        _rememberCredentials = Settings.RememberCredentials;
+        _startWithWindows = StartupRegistration.IsEnabled();
+        StartupRegistration.RefreshPathIfEnabled();
+
         ServersView = CollectionViewSource.GetDefaultView(Servers);
         // Liste rangée en dossiers pays / ville ; les dossiers suivent l'ordre de leur meilleur serveur.
         ServersView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ServerItem.CountryGroup)));
@@ -75,13 +93,26 @@ public sealed partial class MainViewModel : ObservableObject
         _pingTimer.Start();
         _ = RefreshPingsAsync();
         _ = RefreshVisibleCountryAsync();
+        await ReconnectAtStartupAsync();
+    }
+
+    /// <summary>
+    /// Connecté en quittant (ou PC éteint) et reconnexion auto activée : on revient sur la même région.
+    /// Le service garde le tunnel quand l'app se ferme : rien à faire s'il est déjà actif.
+    /// </summary>
+    private async Task ReconnectAtStartupAsync()
+    {
+        if (!Settings.AutoReconnect || !IsIdle || Settings.LastConnectedProfileId is not { } id) return;
+        if (Servers.FirstOrDefault(s => s.Profile.Id == id) is { IsExpired: false } server)
+            await ConnectAsync(server);
     }
 
     // ───────────── État ─────────────
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsConnected), nameof(IsBusy), nameof(IsIdle), nameof(BannerText),
-        nameof(ProtectionTitle), nameof(MainActionLabel), nameof(NeedsCredentials), nameof(OverlayTitle), nameof(OverlayHint))]
+        nameof(ProtectionTitle), nameof(MainActionLabel), nameof(NeedsCredentials), nameof(ShowsSavedCredentials),
+        nameof(OverlayTitle), nameof(OverlayHint))]
     private ConnectionState _state = ConnectionState.Disconnected;
 
     // ───────────── Écran de chargement + messages ─────────────
@@ -121,7 +152,7 @@ public sealed partial class MainViewModel : ObservableObject
     private ServerItem? _activeServer;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(NeedsCredentials))]
+    [NotifyPropertyChangedFor(nameof(NeedsCredentials), nameof(ShowsSavedCredentials))]
     private ServerItem? _selectedServer;
 
     [ObservableProperty]
@@ -182,6 +213,46 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _suggestionsExpanded = true;
+
+    partial void OnSuggestionsExpandedChanged(bool value) => SaveSetting(s => s.SuggestionsExpanded = value);
+
+    // ───────────── Réglages ─────────────
+
+    [ObservableProperty] private bool _isSettingsPanelOpen;
+
+    [RelayCommand]
+    private void ToggleSettings() => IsSettingsPanelOpen = !IsSettingsPanelOpen;
+
+    [ObservableProperty] private bool _minimizeToTray;
+    partial void OnMinimizeToTrayChanged(bool value) => SaveSetting(s => s.MinimizeToTray = value);
+
+    [ObservableProperty] private bool _notificationsEnabled;
+    partial void OnNotificationsEnabledChanged(bool value) => SaveSetting(s => s.Notifications = value);
+
+    [ObservableProperty] private bool _autoReconnect;
+    partial void OnAutoReconnectChanged(bool value) => SaveSetting(s => s.AutoReconnect = value);
+
+    [ObservableProperty] private bool _rememberCredentials;
+    partial void OnRememberCredentialsChanged(bool value) => SaveSetting(s => s.RememberCredentials = value);
+
+    [ObservableProperty] private bool _startWithWindows;
+    partial void OnStartWithWindowsChanged(bool value)
+    {
+        try
+        {
+            StartupRegistration.Set(value);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            ShowError(VpnErrorCode.Unknown, $"Impossible de modifier le démarrage automatique : {ex.Message}");
+        }
+    }
+
+    private void SaveSetting(Action<UserSettings> change)
+    {
+        change(Settings);
+        Settings.Save();
+    }
     public bool HasSuggestions => Suggestions.Count > 0;
 
     // ───────────── Session ─────────────
@@ -216,7 +287,11 @@ public sealed partial class MainViewModel : ObservableObject
         _ => "Pays A→Z",
     };
 
-    partial void OnSortModeChanged(SortMode value) => ApplySort(force: true);
+    partial void OnSortModeChanged(SortMode value)
+    {
+        SaveSetting(s => s.SortMode = value);
+        ApplySort(force: true);
+    }
 
     [RelayCommand]
     private void CycleSort() => SortMode = SortMode switch
@@ -244,7 +319,20 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _username = "";
     [ObservableProperty] private string _password = "";
 
-    public bool NeedsCredentials => IsIdle && SelectedServer?.Profile.RequiresCredentials == true;
+    /// <summary>Champs identifiant / mot de passe à remplir (rien de mémorisé pour ce serveur).</summary>
+    public bool NeedsCredentials => IsIdle && SelectedServer is { Profile.RequiresCredentials: true, HasSavedCredentials: false };
+
+    /// <summary>Identifiants déjà mémorisés pour ce serveur : on affiche « mémorisés · Oublier ».</summary>
+    public bool ShowsSavedCredentials => IsIdle && SelectedServer is { Profile.RequiresCredentials: true, HasSavedCredentials: true };
+
+    [RelayCommand]
+    private async Task ForgetCredentialsAsync()
+    {
+        if (SelectedServer is not { } server) return;
+        var response = await _client.SendAsync(new IpcRequest { Type = RequestType.ForgetCredentials, ProfileId = server.Profile.Id });
+        if (!response.Ok) ShowError(response.ErrorCode, response.Error);
+        await LoadServersAsync();
+    }
 
     [ObservableProperty] private bool _hasError;
     [ObservableProperty] private string _errorTitle = "";
@@ -269,6 +357,12 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _locationPanelTitle = "";
     [ObservableProperty] private string? _locationPanelFile;
     [ObservableProperty] private Location? _locationPanelChoice;
+
+    /// <summary>Date d'expiration du compte (optionnelle) saisie dans le panneau.</summary>
+    [ObservableProperty] private DateTime? _locationPanelExpiresAt;
+
+    [RelayCommand]
+    private void ClearExpiration() => LocationPanelExpiresAt = null;
 
     // ───────────── Chargement ─────────────
 
@@ -348,6 +442,8 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var failedServer = Servers.FirstOrDefault(s => s.Profile.Id == status.ProfileId);
             ShowError(status.ErrorCode, status.Message, failedServer);
+            Notify(ErrorTitle, ErrorMessage, success: false);
+            _ = HandleTunnelErrorAsync(status.ErrorCode, failedServer); // ne bloque pas le rafraîchissement (attente de 3 s)
         }
         if (status.State == ConnectionState.Connected) Password = "";
         AnnounceTransition(previous, status.State);
@@ -357,6 +453,39 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _ = RefreshVisibleCountryAsync(delayMs: 1500);
         }
+    }
+
+    private async Task HandleTunnelErrorAsync(VpnErrorCode code, ServerItem? server)
+    {
+        if (server is null) return;
+
+        // Identifiants mémorisés refusés : on les oublie, sinon chaque essai échouerait de la même façon.
+        if (code == VpnErrorCode.AuthFailed && server.HasSavedCredentials)
+        {
+            await _client.SendAsync(new IpcRequest { Type = RequestType.ForgetCredentials, ProfileId = server.Profile.Id });
+            await LoadServersAsync();
+            return;
+        }
+
+        // Coupure en cours de partie : reconnexion automatique, avec une limite pour ne pas boucler.
+        if (code is not (VpnErrorCode.TunnelLost or VpnErrorCode.Timeout) || !Settings.AutoReconnect || _userDisconnected) return;
+
+        _autoReconnects.RemoveAll(t => DateTime.UtcNow - t > TimeSpan.FromMinutes(10));
+        if (_autoReconnects.Count >= 3)
+        {
+            ErrorMessage += " Reconnexion automatique abandonnée après 3 essais.";
+            return;
+        }
+
+        _autoReconnects.Add(DateTime.UtcNow);
+        ErrorMessage += $" Reconnexion automatique dans 3 s ({_autoReconnects.Count}/3)…";
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        if (State == ConnectionState.Error && !_userDisconnected && Servers.Contains(server)) await ConnectAsync(server);
+    }
+
+    private void Notify(string title, string message, bool success)
+    {
+        if (Settings.Notifications) SystemNotification?.Invoke(title, message, success);
     }
 
     private void AnnounceTransition(ConnectionState previous, ConnectionState current)
@@ -378,6 +507,12 @@ public sealed partial class MainViewModel : ObservableObject
                     : "";
                 ShowToast(true, "Tu es désormais connecté !",
                     $"Profite bien des bots à {_lastConnectedTitle ?? "ta nouvelle région"}{score}.{lag}");
+                Notify("Tu es désormais connecté !", $"Région : {_lastConnectedTitle}{score}.{lag}", success: true);
+                // Pas de remise à zéro des reconnexions auto ici : un serveur qui coupe toutes les 8 s bouclerait sans fin.
+            }
+            if (arrived && ActiveServer is { } connected && Settings.LastConnectedProfileId != connected.Profile.Id)
+            {
+                SaveSetting(s => s.LastConnectedProfileId = connected.Profile.Id);
             }
         }
         else if (current is ConnectionState.Disconnected or ConnectionState.Error)
@@ -465,7 +600,9 @@ public sealed partial class MainViewModel : ObservableObject
     {
         await Task.WhenAll(Servers.ToList().Where(s => s.Profile.ServerHost is not null).Select(async s =>
         {
-            s.PingMs = await NetworkProbe.PingAsync(s.Profile.ServerHost!);
+            var result = await NetworkProbe.ProbeAsync(s.Profile.ServerHost!, s.Profile.ServerPort);
+            s.PingMethod = result?.Method;
+            s.PingMs = result?.Ms;
         }));
         UpdateBestServer();
     }
@@ -552,7 +689,9 @@ public sealed partial class MainViewModel : ObservableObject
         HasError = false;
         SelectedServer = server;
         _lastAttempt = server;
-        if (server.Profile.RequiresCredentials && (Username.Length == 0 || Password.Length == 0))
+        _userDisconnected = false;
+        var typedCredentials = server.Profile.RequiresCredentials && Username.Length > 0 && Password.Length > 0;
+        if (server.Profile.RequiresCredentials && !typedCredentials && !server.HasSavedCredentials)
         {
             ShowError(VpnErrorCode.CredentialsRequired, server: server);
             return;
@@ -572,8 +711,9 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 Type = RequestType.Connect,
                 ProfileId = server.Profile.Id,
-                Username = server.Profile.RequiresCredentials ? Username : null,
-                Password = server.Profile.RequiresCredentials ? Password : null,
+                Username = typedCredentials ? Username : null,
+                Password = typedCredentials ? Password : null,
+                RememberCredentials = typedCredentials && RememberCredentials,
             });
         }
         finally
@@ -585,12 +725,18 @@ public sealed partial class MainViewModel : ObservableObject
             ShowError(response.ErrorCode, response.Error, server);
             if (response.ErrorCode == VpnErrorCode.ProfileNotFound) await LoadServersAsync();
         }
+        else if (typedCredentials && RememberCredentials)
+        {
+            await LoadServersAsync(); // affiche « identifiants mémorisés »
+        }
         await RefreshStatusAsync();
     }
 
     private async Task DisconnectAsync()
     {
         HasError = false;
+        _userDisconnected = true;
+        SaveSetting(s => s.LastConnectedProfileId = null); // choix de l'utilisateur : pas de reconnexion au lancement
         // La requête ne répond qu'une fois le tunnel fermé : on affiche « Retour à ta région » tout de suite.
         DismissToast();
         State = ConnectionState.Disconnecting;
@@ -615,24 +761,110 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Ajouter une région",
+            Title = "Ajouter une ou plusieurs régions",
             Filter = "Profils VPN (*.conf;*.ovpn)|*.conf;*.ovpn|WireGuard (*.conf)|*.conf|OpenVPN (*.ovpn)|*.ovpn",
+            Multiselect = true,
         };
         if (dialog.ShowDialog() != true) return;
+        _ = ImportFilesAsync(dialog.FileNames);
+    }
 
-        if (new FileInfo(dialog.FileName).Length > 1024 * 1024)
+    public static bool IsProfileFile(string path) =>
+        Path.GetExtension(path).ToLowerInvariant() is ".conf" or ".ovpn";
+
+    /// <summary>
+    /// Un seul fichier : panneau pour choisir sa région. Plusieurs (sélection multiple ou glisser-déposer) :
+    /// import direct avec la région devinée depuis le nom, puis un récapitulatif.
+    /// </summary>
+    public async Task ImportFilesAsync(IEnumerable<string> paths)
+    {
+        var files = paths.Where(IsProfileFile).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (files.Count == 0)
         {
-            ShowError(VpnErrorCode.FileTooLarge);
+            ShowError(VpnErrorCode.UnsupportedFile);
             return;
         }
 
-        _pendingImportPath = dialog.FileName;
-        _editingProfileId = null;
-        LocationPanelTitle = "Dans quelle région est ce serveur ?";
-        LocationPanelFile = Path.GetFileName(dialog.FileName);
-        LocationPanelChoice = Locations.Guess(dialog.FileName);
-        IsLocationPanelOpen = true;
+        if (files.Count == 1)
+        {
+            if (new FileInfo(files[0]).Length > MaxProfileSize)
+            {
+                ShowError(VpnErrorCode.FileTooLarge);
+                return;
+            }
+            _pendingImportPath = files[0];
+            _editingProfileId = null;
+            LocationPanelTitle = "Dans quelle région est ce serveur ?";
+            LocationPanelFile = Path.GetFileName(files[0]);
+            LocationPanelChoice = Locations.Guess(files[0]);
+            LocationPanelExpiresAt = null;
+            IsLocationPanelOpen = true;
+            return;
+        }
+
+        int imported = 0, withoutRegion = 0;
+        (string File, IpcResponse Response)? firstFailure = null;
+        foreach (var file in files)
+        {
+            var response = await ImportOneAsync(file, Locations.Guess(file)?.Id, expiresAt: null);
+            if (response.Ok)
+            {
+                imported++;
+                if (response.Profile?.LocationId is null) withoutRegion++;
+            }
+            else
+            {
+                firstFailure ??= (Path.GetFileName(file), response);
+            }
+        }
+
+        await LoadServersAsync();
+        _ = RefreshPingsAsync();
+
+        if (firstFailure is { } failure)
+        {
+            ShowError(failure.Response.ErrorCode, failure.Response.Error);
+            var others = files.Count - imported - 1;
+            ErrorMessage = $"« {failure.File} » : {ErrorMessage}" + (others > 0 ? $" ({others} autre(s) fichier(s) refusé(s).)" : "")
+                           + (imported > 0 ? $" {imported} région(s) ajoutée(s) quand même." : "");
+            return;
+        }
+
+        ShowToast(true, $"{imported} régions ajoutées",
+            withoutRegion == 0
+                ? "Les régions ont été devinées depuis les noms des fichiers."
+                : $"{withoutRegion} sans région reconnue : clic droit → « Modifier » pour la choisir.");
     }
+
+    private const long MaxProfileSize = 1024 * 1024;
+
+    private async Task<IpcResponse> ImportOneAsync(string path, string? locationId, DateTime? expiresAt)
+    {
+        string content;
+        try
+        {
+            if (new FileInfo(path).Length > MaxProfileSize) return IpcResponse.Fail("Fichier trop gros.", VpnErrorCode.FileTooLarge);
+            content = await File.ReadAllTextAsync(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return IpcResponse.Fail($"Lecture impossible : {ex.Message}", VpnErrorCode.Unknown);
+        }
+
+        return await _client.SendAsync(new IpcRequest
+        {
+            Type = RequestType.ImportProfile,
+            Name = Path.GetFileNameWithoutExtension(path),
+            FileName = Path.GetFileName(path),
+            Content = content,
+            LocationId = locationId,
+            ExpiresAt = expiresAt,
+        });
+    }
+
+    // ── Glisser-déposer : indication visuelle pendant le survol ──
+
+    [ObservableProperty] private bool _isDropTarget;
 
     [RelayCommand]
     private void ChangeLocation(ServerItem? server)
@@ -640,9 +872,10 @@ public sealed partial class MainViewModel : ObservableObject
         if (server is null) return;
         _pendingImportPath = null;
         _editingProfileId = server.Profile.Id;
-        LocationPanelTitle = "Changer la région";
+        LocationPanelTitle = "Modifier ce serveur";
         LocationPanelFile = server.Profile.Name;
         LocationPanelChoice = server.Location;
+        LocationPanelExpiresAt = server.ExpiresAt;
         IsLocationPanelOpen = true;
     }
 
@@ -660,28 +893,19 @@ public sealed partial class MainViewModel : ObservableObject
                 ProfileId = _editingProfileId,
                 LocationId = LocationPanelChoice?.Id,
             });
+            if (response.Ok)
+            {
+                response = await _client.SendAsync(new IpcRequest
+                {
+                    Type = RequestType.SetProfileExpiration,
+                    ProfileId = _editingProfileId,
+                    ExpiresAt = LocationPanelExpiresAt,
+                });
+            }
         }
         else if (_pendingImportPath is not null)
         {
-            string content;
-            try
-            {
-                content = await File.ReadAllTextAsync(_pendingImportPath);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                ShowError(VpnErrorCode.Unknown, $"Lecture impossible : {ex.Message}");
-                return;
-            }
-
-            response = await _client.SendAsync(new IpcRequest
-            {
-                Type = RequestType.ImportProfile,
-                Name = Path.GetFileNameWithoutExtension(_pendingImportPath),
-                FileName = Path.GetFileName(_pendingImportPath),
-                Content = content,
-                LocationId = LocationPanelChoice?.Id,
-            });
+            response = await ImportOneAsync(_pendingImportPath, LocationPanelChoice?.Id, LocationPanelExpiresAt);
         }
         else
         {

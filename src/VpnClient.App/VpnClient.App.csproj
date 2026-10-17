@@ -10,6 +10,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- WinForms ne sert qu'à l'icône de notification : pas d'usings globaux qui entreraient en conflit avec WPF. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Drapeaux (flagcdn.com, domaine public), embarqués : affichage hors ligne. -->
     <Resource Include="Resources\Flags\*.png" />
   </ItemGroup>
@@ -20,6 +26,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- Icône de la zone de notification (NotifyIcon). -->
+    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
 </Project>

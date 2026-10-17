@@ -64,6 +64,44 @@ public sealed partial class ServerItem : ObservableObject
     [NotifyPropertyChangedFor(nameof(PingText), nameof(PingBrush))]
     private long? _pingMs;
 
+    /// <summary>« ICMP » ou « TCP 443 »… : comment le ping a été mesuré (affiché dans l'infobulle).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PingTooltip))]
+    private string? _pingMethod;
+
+    public string PingTooltip => PingMethod is null
+        ? "Le serveur ne répond ni au ping ni en TCP (443, 80)."
+        : $"Ping mesuré en {PingMethod}";
+
+    // ── Expiration (comptes gratuits) ──
+
+    public DateTime? ExpiresAt => Profile.ExpiresAt;
+    public bool HasExpiry => ExpiresAt is not null;
+
+    /// <summary>Jours restants : 0 = expire aujourd'hui (fin de journée), négatif = expiré.</summary>
+    public int? DaysLeft => ExpiresAt is { } d ? (d.Date - DateTime.Today).Days : null;
+    public bool IsExpired => DaysLeft < 0;
+
+    public string ExpiryText => DaysLeft switch
+    {
+        null => "",
+        < 0 => "Expiré",
+        0 => "Expire aujourd'hui",
+        1 => "Expire demain",
+        <= 7 => $"Expire dans {DaysLeft} j",
+        _ => $"Expire le {ExpiresAt:dd/MM}",
+    };
+
+    public Brush ExpiryBrush => DaysLeft switch
+    {
+        null => Unknown,
+        < 0 => Bad,
+        <= 2 => Medium,
+        _ => Unknown,
+    };
+
+    public bool HasSavedCredentials => Profile.HasSavedCredentials;
+
     [ObservableProperty]
     private bool _isActive;
 
@@ -79,7 +117,12 @@ public sealed partial class ServerItem : ObservableObject
     public void RefreshClock()
     {
         LocalTime = Location?.LocalTime;
-        Lobby = Location is null ? null : LobbyAdvisor.Score(Location, PingMs, DateTime.UtcNow);
+        // Un profil expiré n'est plus proposé : pas de note.
+        Lobby = Location is null || IsExpired ? null : LobbyAdvisor.Score(Location, PingMs, DateTime.UtcNow);
+        OnPropertyChanged(nameof(DaysLeft));
+        OnPropertyChanged(nameof(IsExpired));
+        OnPropertyChanged(nameof(ExpiryText));
+        OnPropertyChanged(nameof(ExpiryBrush));
     }
 
     partial void OnPingMsChanged(long? value) => RefreshClock();
@@ -92,8 +135,10 @@ public sealed partial class ServerItem : ObservableObject
 
     public int LobbyValue => Lobby?.Value ?? -1;
     public string LobbyScoreText => Lobby is { } l ? l.Value.ToString() : "?";
-    public string LobbyGrade => Lobby?.Grade ?? "Région inconnue";
-    public string LobbyReason => Lobby?.Reason ?? "Choisis la région de ce serveur (clic droit)";
+    public string LobbyGrade => IsExpired ? "Expiré" : Lobby?.Grade ?? "Région inconnue";
+    public string LobbyReason => IsExpired
+        ? "Ce compte a expiré : renouvelle le profil (clic droit → Modifier)"
+        : Lobby?.Reason ?? "Choisis la région de ce serveur (clic droit)";
 
     public Brush LobbyScoreBrush => Lobby?.Value switch
     {
