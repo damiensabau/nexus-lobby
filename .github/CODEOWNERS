@@ -1,0 +1,7 @@
+# Toute modification doit être approuvée par le mainteneur.
+*                                   @damiensabau
+
+# Zones sensibles (service SYSTEM, validation des profils, CI) : relecture obligatoire.
+/src/VpnClient.Service/             @damiensabau
+/.github/                           @damiensabau
+/installer/                         @damiensabau
