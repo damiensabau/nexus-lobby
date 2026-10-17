@@ -7,7 +7,8 @@ using VpnClient.Core;
 namespace VpnClient.Service;
 
 /// <summary>Serveur named pipe : reçoit les commandes de l'interface (une requête JSON par ligne).</summary>
-public sealed class PipeServer(ProfileStore store, TunnelManager tunnels, ILogger<PipeServer> logger) : BackgroundService
+public sealed class PipeServer(ProfileStore store, CredentialStore credentials, TunnelManager tunnels, ILogger<PipeServer> logger)
+    : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -76,26 +77,39 @@ public sealed class PipeServer(ProfileStore store, TunnelManager tunnels, ILogge
                 return IpcResponse.Success();
 
             case RequestType.ListProfiles:
-                return new IpcResponse { Ok = true, Profiles = store.All().ToList() };
+                var profiles = store.All().ToList();
+                foreach (var p in profiles) p.HasSavedCredentials = p.RequiresCredentials && credentials.Has(p.Id);
+                return new IpcResponse { Ok = true, Profiles = profiles };
 
             case RequestType.ImportProfile:
                 if (string.IsNullOrEmpty(request.FileName) || string.IsNullOrEmpty(request.Content))
                     return IpcResponse.Fail("Fichier manquant.", VpnErrorCode.InvalidConfig);
-                var profile = store.Import(request.Name ?? "", request.FileName, request.Content, request.LocationId);
+                var profile = store.Import(request.Name ?? "", request.FileName, request.Content, request.LocationId, request.ExpiresAt);
                 return new IpcResponse { Ok = true, Profile = profile };
 
             case RequestType.SetProfileLocation:
                 if (request.ProfileId is null) return IpcResponse.Fail("Profil manquant.", VpnErrorCode.ProfileNotFound);
                 return new IpcResponse { Ok = true, Profile = store.SetLocation(request.ProfileId, request.LocationId) };
 
+            case RequestType.SetProfileExpiration:
+                if (request.ProfileId is null) return IpcResponse.Fail("Profil manquant.", VpnErrorCode.ProfileNotFound);
+                return new IpcResponse { Ok = true, Profile = store.SetExpiration(request.ProfileId, request.ExpiresAt) };
+
+            case RequestType.ForgetCredentials:
+                if (request.ProfileId is null) return IpcResponse.Fail("Profil manquant.", VpnErrorCode.ProfileNotFound);
+                credentials.Forget(request.ProfileId);
+                return IpcResponse.Success();
+
             case RequestType.DeleteProfile:
                 if (request.ProfileId is null) return IpcResponse.Fail("Profil manquant.", VpnErrorCode.ProfileNotFound);
                 if (tunnels.IsActive(request.ProfileId)) await tunnels.DisconnectAsync();
+                credentials.Forget(request.ProfileId);
                 return store.Delete(request.ProfileId) ? IpcResponse.Success() : IpcResponse.Fail("Profil introuvable.", VpnErrorCode.ProfileNotFound);
 
             case RequestType.Connect:
                 if (request.ProfileId is null) return IpcResponse.Fail("Profil manquant.", VpnErrorCode.ProfileNotFound);
-                await tunnels.ConnectAsync(request.ProfileId, request.Username, request.Password);
+                var (username, password) = ResolveCredentials(request);
+                await tunnels.ConnectAsync(request.ProfileId, username, password);
                 return new IpcResponse { Ok = true, Status = tunnels.GetStatus() };
 
             case RequestType.Disconnect:
@@ -108,6 +122,23 @@ public sealed class PipeServer(ProfileStore store, TunnelManager tunnels, ILogge
             default:
                 return IpcResponse.Fail($"Requête inconnue : {request.Type}");
         }
+    }
+
+    /// <summary>
+    /// Identifiants saisis : mémorisés si demandé, sinon on oublie les anciens.
+    /// Rien de saisi : on reprend ceux mémorisés (s'il y en a).
+    /// </summary>
+    private (string? Username, string? Password) ResolveCredentials(IpcRequest request)
+    {
+        var id = request.ProfileId!;
+        if (!string.IsNullOrEmpty(request.Username) && !string.IsNullOrEmpty(request.Password))
+        {
+            if (request.RememberCredentials) credentials.Save(id, request.Username, request.Password);
+            else credentials.Forget(id);
+            return (request.Username, request.Password);
+        }
+
+        return credentials.Load(id) is { } saved ? (saved.Username, saved.Password) : (null, null);
     }
 
     private static NamedPipeServerStream CreatePipe()

@@ -57,7 +57,7 @@ public sealed partial class ProfileStore
     public string GetConfigPath(VpnProfile profile) =>
         Path.Combine(_dir, profile.Id + (profile.Protocol == VpnProtocol.WireGuard ? ".conf" : ".ovpn"));
 
-    public VpnProfile Import(string name, string fileName, string content, string? locationId)
+    public VpnProfile Import(string name, string fileName, string content, string? locationId, DateTime? expiresAt = null)
     {
         var protocol = Path.GetExtension(fileName).ToLowerInvariant() switch
         {
@@ -79,6 +79,8 @@ public sealed partial class ProfileStore
                 RequiresCredentials = protocol == VpnProtocol.OpenVpn && AuthUserPassPrompt().IsMatch(content),
                 LocationId = locationId,
                 ServerHost = ParseServerHost(protocol, content),
+                ServerPort = ParseServerPort(protocol, content),
+                ExpiresAt = expiresAt?.Date,
                 ImportedAt = DateTime.UtcNow,
             };
 
@@ -95,6 +97,17 @@ public sealed partial class ProfileStore
         {
             var profile = _profiles.FirstOrDefault(p => p.Id == id) ?? throw new VpnException(VpnErrorCode.ProfileNotFound, "Profil introuvable.");
             profile.LocationId = locationId;
+            Save();
+            return profile;
+        }
+    }
+
+    public VpnProfile SetExpiration(string id, DateTime? expiresAt)
+    {
+        lock (_lock)
+        {
+            var profile = _profiles.FirstOrDefault(p => p.Id == id) ?? throw new VpnException(VpnErrorCode.ProfileNotFound, "Profil introuvable.");
+            profile.ExpiresAt = expiresAt?.Date;
             Save();
             return profile;
         }
@@ -118,6 +131,14 @@ public sealed partial class ProfileStore
     {
         var match = protocol == VpnProtocol.WireGuard ? WireGuardEndpoint().Match(content) : OpenVpnRemote().Match(content);
         return match.Success ? match.Groups["host"].Value.Trim('[', ']') : null;
+    }
+
+    public static int? ParseServerPort(VpnProtocol protocol, string content)
+    {
+        var match = protocol == VpnProtocol.WireGuard ? WireGuardEndpoint().Match(content) : OpenVpnRemote().Match(content);
+        if (!match.Success) return null;
+        if (int.TryParse(match.Groups["port"].Value, out var port) && port is > 0 and < 65536) return port;
+        return protocol == VpnProtocol.OpenVpn ? 1194 : null; // port OpenVPN par défaut
     }
 
     private static void ValidateWireGuard(string content)
@@ -191,7 +212,12 @@ public sealed partial class ProfileStore
     private List<VpnProfile> Load()
     {
         if (!File.Exists(_indexPath)) return [];
-        return JsonSerializer.Deserialize<List<VpnProfile>>(File.ReadAllText(_indexPath), Ipc.Json) ?? [];
+        var profiles = JsonSerializer.Deserialize<List<VpnProfile>>(File.ReadAllText(_indexPath), Ipc.Json) ?? [];
+
+        // Profils importés avant l'ajout du port : on le relit dans leur fichier.
+        foreach (var p in profiles.Where(p => p.ServerPort is null && File.Exists(GetConfigPath(p))))
+            p.ServerPort = ParseServerPort(p.Protocol, File.ReadAllText(GetConfigPath(p)));
+        return profiles;
     }
 
     private void Save() =>
@@ -220,10 +246,10 @@ public sealed partial class ProfileStore
     private static partial Regex AuthUserPassPrompt();
 
     // "Endpoint = host:port" ou "Endpoint = [ipv6]:port"
-    [GeneratedRegex(@"^\s*Endpoint\s*=\s*(?<host>\[[^\]]+\]|[^:\s]+)", RegexOptions.Multiline | RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"^\s*Endpoint\s*=\s*(?<host>\[[^\]]+\]|[^:\s]+)(:(?<port>\d+))?", RegexOptions.Multiline | RegexOptions.IgnoreCase)]
     private static partial Regex WireGuardEndpoint();
 
-    [GeneratedRegex(@"^\s*remote\s+(?<host>\S+)", RegexOptions.Multiline)]
+    [GeneratedRegex(@"^\s*remote\s+(?<host>\S+)(\s+(?<port>\d+))?", RegexOptions.Multiline)]
     private static partial Regex OpenVpnRemote();
 
     [GeneratedRegex(@"[^a-z0-9_=+.-]+")]

@@ -22,6 +22,8 @@ public enum RequestType
     ImportProfile,
     DeleteProfile,
     SetProfileLocation,
+    SetProfileExpiration,
+    ForgetCredentials,
     Connect,
     Disconnect,
     GetStatus,
@@ -40,9 +42,13 @@ public sealed class IpcRequest
     public string? FileName { get; set; }
     public string? Content { get; set; }
 
-    // Connect (OpenVPN avec auth-user-pass)
+    // ImportProfile / SetProfileExpiration (null = pas d'expiration)
+    public DateTime? ExpiresAt { get; set; }
+
+    // Connect (OpenVPN avec auth-user-pass). Sans identifiants, le service utilise ceux mémorisés s'il y en a.
     public string? Username { get; set; }
     public string? Password { get; set; }
+    public bool RememberCredentials { get; set; }
 }
 
 public sealed class IpcResponse

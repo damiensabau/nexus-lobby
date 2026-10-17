@@ -7,6 +7,7 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddWindowsService(o => o.ServiceName = "VpnClientService");
 builder.Services.Configure<VpnOptions>(builder.Configuration.GetSection("Vpn"));
 builder.Services.AddSingleton<ProfileStore>();
+builder.Services.AddSingleton<CredentialStore>();
 builder.Services.AddSingleton<TunnelManager>();
 builder.Services.AddHostedService<PipeServer>();
 

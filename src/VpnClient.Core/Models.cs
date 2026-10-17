@@ -31,6 +31,15 @@ public sealed class VpnProfile
     /// <summary>Hôte du serveur (Endpoint WireGuard / remote OpenVPN), utilisé pour mesurer le ping.</summary>
     public string? ServerHost { get; set; }
 
+    /// <summary>Port du serveur (Endpoint WireGuard / remote OpenVPN), pour le ping de secours en TCP.</summary>
+    public int? ServerPort { get; set; }
+
+    /// <summary>Date d'expiration du compte (profils gratuits), saisie par l'utilisateur. Null = pas d'expiration connue.</summary>
+    public DateTime? ExpiresAt { get; set; }
+
+    /// <summary>Identifiants OpenVPN mémorisés (chiffrés) côté service. Recalculé à chaque liste, jamais le secret lui-même.</summary>
+    public bool HasSavedCredentials { get; set; }
+
     public DateTime ImportedAt { get; set; }
 }
 
