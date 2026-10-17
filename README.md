@@ -18,6 +18,9 @@ Warzone* et le multijoueur de *Call of Duty*.
 - 🏆 **Suggestions en direct** : note sur 100 par région, recalculée chaque minute
 - ⚡ **WireGuard et OpenVPN** : importe tes fichiers `.conf` / `.ovpn`, rangés par pays et par ville
 - 📈 **Session** : durée, données, débit en direct sur 60 secondes
+- 🔔 **Zone de notification** : l'app reste active fenêtre fermée, icône colorée selon l'état, notifications Windows
+- 🔁 **Reconnexion automatique** si le tunnel se coupe (3 essais max), et au démarrage de Windows si tu étais connecté
+- 📂 **Glisser-déposer** de plusieurs profils d'un coup ; ⏳ **date d'expiration** des comptes gratuits ; 🔑 identifiants OpenVPN **mémorisés** (chiffrés)
 - 🛡️ **Sûr par défaut** : profils dangereux refusés, tunnel coupé automatiquement si le serveur ne répond pas
 - 🔒 **Respect de la vie privée** : aucune télémétrie, ni IP ni ville affichées (seulement le pays visible)
 

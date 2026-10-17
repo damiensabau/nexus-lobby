@@ -19,6 +19,9 @@ best one right now. Built for online shooters such as *Call of Duty: Warzone* an
 - 🏆 **Live suggestions**: a 0–100 score per region, refreshed every minute
 - ⚡ **WireGuard and OpenVPN**: import your `.conf` / `.ovpn` files, organized by country and city
 - 📈 **Session**: duration, data used, live 60-second throughput graph
+- 🔔 **System tray**: keeps running with the window closed, state-colored icon, Windows notifications
+- 🔁 **Auto-reconnect** when the tunnel drops (3 tries max), and at Windows startup if you were connected
+- 📂 **Drag & drop** several profiles at once; ⏳ **expiry date** for free accounts; 🔑 OpenVPN credentials **remembered** (encrypted)
 - 🛡️ **Safe by default**: dangerous profiles rejected, tunnel removed automatically if the server doesn't answer
 - 🔒 **Privacy**: no telemetry, never shows your IP or city (only the country you appear from)
 

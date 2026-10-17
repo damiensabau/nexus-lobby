@@ -14,7 +14,8 @@
                  ExtendsContentIntoTitleBar="True"
                  WindowBackdropType="None"
                  WindowCornerPreference="Round"
-                 Background="{StaticResource BgDeep}">
+                 Background="{StaticResource BgDeep}"
+                 AllowDrop="True" DragEnter="OnDragOver" DragOver="OnDragOver" DragLeave="OnDragLeave" Drop="OnDrop">
 
     <ui:FluentWindow.Resources>
         <!-- Bouton principal (dégradé façon « Changer l'emplacement ») -->
@@ -273,7 +274,23 @@
                                         Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}" />
                             <ui:PasswordBox Margin="0,8,0,0" PlaceholderText="Mot de passe" Icon="{ui:SymbolIcon Key24}"
                                             Password="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <CheckBox Margin="0,8,0,0" IsChecked="{Binding RememberCredentials}"
+                                      Content="Se souvenir de mes identifiants (chiffrés sur ce PC)" />
                         </StackPanel>
+
+                        <Border Margin="0,12,0,0" Padding="12,8" CornerRadius="8" Background="#121B2F"
+                                BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                                Visibility="{Binding ShowsSavedCredentials, Converter={StaticResource BoolToVisibility}}">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="LockClosed16" FontSize="14" Foreground="{StaticResource Green}" />
+                                    <TextBlock Text="Identifiants mémorisés" Margin="8,0,0,0" Style="{StaticResource Caption}" />
+                                </StackPanel>
+                                <ui:Button Content="Oublier" HorizontalAlignment="Right" Padding="10,2" FontSize="11"
+                                           Command="{Binding ForgetCredentialsCommand}"
+                                           ToolTip="Supprime les identifiants enregistrés pour ce serveur" />
+                            </Grid>
+                        </Border>
                     </StackPanel>
 
                     <!-- Recherche -->
@@ -342,7 +359,7 @@
                                           Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}">
                                         <Grid.ContextMenu>
                                             <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
-                                                <MenuItem Header="Changer la région" Command="{Binding ChangeLocationCommand}"
+                                                <MenuItem Header="Modifier (région, expiration)…" Command="{Binding ChangeLocationCommand}"
                                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                                 <MenuItem Header="Supprimer" Command="{Binding DeleteServerCommand}"
                                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
@@ -368,6 +385,12 @@
                                                        Foreground="#E5E9F2" TextTrimming="CharacterEllipsis" />
                                             <TextBlock Text="{Binding ListSubtitle}" FontSize="11" Foreground="{StaticResource TextDim}"
                                                        TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
+                                                        Visibility="{Binding HasExpiry, Converter={StaticResource BoolToVisibility}}">
+                                                <ui:SymbolIcon Symbol="CalendarLtr20" FontSize="11" Foreground="{Binding ExpiryBrush}" />
+                                                <TextBlock Text="{Binding ExpiryText}" Margin="4,0,0,0" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{Binding ExpiryBrush}" />
+                                            </StackPanel>
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,10,0">
@@ -377,8 +400,10 @@
                                                     <TextBlock Text="{Binding LobbyScoreText}" FontSize="11" FontWeight="Bold"
                                                                Foreground="{Binding LobbyScoreBrush}" />
                                                 </Border>
-                                                <Ellipse Width="7" Height="7" Fill="{Binding PingBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding PingText}" FontSize="12" Foreground="{Binding PingBrush}" />
+                                                <Ellipse Width="7" Height="7" Fill="{Binding PingBrush}" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                         ToolTip="{Binding PingTooltip}" />
+                                                <TextBlock Text="{Binding PingText}" FontSize="12" Foreground="{Binding PingBrush}"
+                                                           ToolTip="{Binding PingTooltip}" />
                                             </StackPanel>
                                             <TextBlock HorizontalAlignment="Right" FontSize="11" Foreground="{Binding LobbyBrush}"
                                                        ToolTip="Heure locale de la région. La nuit sur place, moins de joueurs : lobbies souvent plus faciles.">
@@ -430,6 +455,43 @@
                                        Text="Ajoute tes fichiers WireGuard (.conf) ou OpenVPN (.ovpn), un par pays. Astuce : les régions en heure creuse (la nuit sur place) donnent souvent des lobbies plus faciles." />
                         </StackPanel>
 
+                        <!-- Réglages -->
+                        <Border Grid.Row="0" Grid.RowSpan="2" Margin="16,0,16,8" Padding="18" CornerRadius="14" Panel.ZIndex="2"
+                                Background="{StaticResource PanelAlt}" BorderBrush="#2E3D63" BorderThickness="1"
+                                VerticalAlignment="Bottom"
+                                Visibility="{Binding IsSettingsPanelOpen, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,10">
+                                    <TextBlock Text="Réglages" FontSize="16" FontWeight="SemiBold" Foreground="#E5E9F2" />
+                                    <Button HorizontalAlignment="Right" Cursor="Hand" ToolTip="Fermer" Command="{Binding ToggleSettingsCommand}">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="Transparent" Padding="4">
+                                                    <ui:SymbolIcon Symbol="Dismiss16" FontSize="14" Foreground="{StaticResource TextMuted}" />
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </Grid>
+
+                                <ui:ToggleSwitch Content="Lancer au démarrage de Windows" IsChecked="{Binding StartWithWindows}" Margin="0,4" />
+                                <TextBlock Style="{StaticResource Caption}" Margin="0,0,0,8" TextWrapping="Wrap"
+                                           Text="L'app démarre directement dans la zone de notification." />
+
+                                <ui:ToggleSwitch Content="Garder dans la zone de notification" IsChecked="{Binding MinimizeToTray}" Margin="0,4" />
+                                <TextBlock Style="{StaticResource Caption}" Margin="0,0,0,8" TextWrapping="Wrap"
+                                           Text="Fermer la fenêtre ne quitte pas l'app (clic droit sur l'icône → Quitter)." />
+
+                                <ui:ToggleSwitch Content="Reconnexion automatique" IsChecked="{Binding AutoReconnect}" Margin="0,4" />
+                                <TextBlock Style="{StaticResource Caption}" Margin="0,0,0,8" TextWrapping="Wrap"
+                                           Text="Si le tunnel se coupe (3 essais max), et au lancement si tu étais connecté en quittant." />
+
+                                <ui:ToggleSwitch Content="Notifications Windows" IsChecked="{Binding NotificationsEnabled}" Margin="0,4" />
+                                <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap"
+                                           Text="« Connecté » et « connexion perdue » quand la fenêtre n'est pas au premier plan." />
+                            </StackPanel>
+                        </Border>
+
                         <!-- Panneau d'emplacement (import / modification) -->
                         <Border Grid.Row="0" Grid.RowSpan="2" Margin="16,0,16,8" Padding="18" CornerRadius="14"
                                 Background="{StaticResource PanelAlt}" BorderBrush="#2E3D63" BorderThickness="1"
@@ -452,6 +514,20 @@
                                 </ComboBox>
                                 <TextBlock Style="{StaticResource Caption}" Margin="0,8,0,0" TextWrapping="Wrap"
                                            Text="La région place le serveur sur la carte et donne son heure locale. Elle est devinée depuis le nom du fichier quand c'est possible." />
+
+                                <TextBlock Text="Expiration du compte (optionnel)" Margin="0,14,0,6" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="#CBD5E1" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <DatePicker SelectedDate="{Binding LocationPanelExpiresAt}" SelectedDateFormat="Long" />
+                                    <ui:Button Grid.Column="1" Content="Aucune" Margin="8,0,0,0" Command="{Binding ClearExpirationCommand}"
+                                               ToolTip="Ce compte n'expire pas" />
+                                </Grid>
+                                <TextBlock Style="{StaticResource Caption}" Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="Pour les comptes VPN gratuits : un badge te prévient avant l'expiration, et un profil expiré n'est plus proposé." />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
                                     <ui:Button Content="Annuler" Command="{Binding CancelLocationCommand}" />
                                     <ui:Button Content="Valider" Appearance="Primary" Margin="8,0,0,0"
@@ -464,8 +540,15 @@
                     <!-- Import -->
                     <Border Grid.Row="4" BorderBrush="{StaticResource Stroke}" BorderThickness="0,1,0,0" Padding="24,14">
                         <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
                             <ui:Button Content="Ajouter une région" Icon="{ui:SymbolIcon Add24}" HorizontalAlignment="Stretch"
-                                       Command="{Binding ImportCommand}" />
+                                       Command="{Binding ImportCommand}"
+                                       ToolTip="Un ou plusieurs fichiers .conf / .ovpn — tu peux aussi les glisser sur la fenêtre" />
+                            <ui:Button Grid.Column="1" Margin="8,0,0,0" Icon="{ui:SymbolIcon Settings24}" ToolTip="Réglages" AutomationProperties.Name="Réglages"
+                                       Command="{Binding ToggleSettingsCommand}" />
                         </Grid>
                     </Border>
                 </Grid>
@@ -1159,5 +1242,22 @@
                 </Grid>
             </Grid>
         </Grid>
+
+        <!-- Survol d'un glisser-déposer de profils -->
+        <Border Grid.RowSpan="2" Panel.ZIndex="100" IsHitTestVisible="False" Background="#D9070C18"
+                Visibility="{Binding IsDropTarget, Converter={StaticResource BoolToVisibility}}">
+            <Border Margin="40" CornerRadius="24" BorderThickness="2" BorderBrush="{StaticResource Neon}">
+                <Border.Background>
+                    <SolidColorBrush Color="#38BDF8" Opacity="0.06" />
+                </Border.Background>
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <ui:SymbolIcon Symbol="ArrowDownload24" FontSize="56" Foreground="{StaticResource Neon}" />
+                    <TextBlock Text="Dépose tes profils ici" FontSize="26" FontWeight="Bold" Foreground="#E5E9F2"
+                               HorizontalAlignment="Center" Margin="0,12,0,0" />
+                    <TextBlock Text="Fichiers WireGuard (.conf) ou OpenVPN (.ovpn), plusieurs d'un coup : la région est devinée depuis le nom."
+                               Style="{StaticResource Caption}" FontSize="14" HorizontalAlignment="Center" Margin="0,6,0,0" />
+                </StackPanel>
+            </Border>
+        </Border>
     </Grid>
 </ui:FluentWindow>
