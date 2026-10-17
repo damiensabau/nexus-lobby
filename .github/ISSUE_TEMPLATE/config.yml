@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Poser une question
+    url: https://github.com/damiensabau/nexus-lobby/discussions
+    about: Aide à l'utilisation, idées à discuter, retours sur les suggestions de lobbies.
   - name: Signaler une faille de sécurité
-    url: https://docs.github.com/fr/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability
-    about: En privé, via l'onglet Security du dépôt (voir SECURITY.md).
+    url: https://github.com/damiensabau/nexus-lobby/security/advisories/new
+    about: En privé (voir SECURITY.md), jamais dans une issue publique.

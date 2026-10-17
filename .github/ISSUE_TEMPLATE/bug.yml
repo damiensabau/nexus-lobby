@@ -1,6 +1,6 @@
 name: Bug
 description: Quelque chose ne marche pas comme prévu
-labels: [bug]
+labels: [bug, "à trier"]
 body:
   - type: markdown
     attributes:

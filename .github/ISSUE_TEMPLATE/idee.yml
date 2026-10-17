@@ -1,6 +1,6 @@
 name: Idée
 description: Proposer une fonctionnalité ou une amélioration
-labels: [idée]
+labels: [idée, "à trier"]
 body:
   - type: textarea
     id: need
