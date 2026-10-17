@@ -7,6 +7,8 @@
 
 🇬🇧 [English version](README.en.md)
 
+![NEXUS LOBBY : carte du monde, meilleurs lobbies du moment et liste des régions rangées par pays](docs/screenshots/accueil.png)
+
 **Changeur de région pour le jeu en ligne** : connecte-toi en un clic à un serveur VPN dans un autre pays pour
 jouer dans des lobbies souvent plus calmes. L'app note chaque région en direct (heure locale, population de
 joueurs, ping) et te propose la meilleure du moment. Pensée pour les jeux de tir en ligne comme *Call of Duty:
@@ -23,6 +25,14 @@ Warzone* et le multijoueur de *Call of Duty*.
 > *Call of Duty* et *Warzone* sont des marques d'Activision Publishing, Inc. Changer de région n'apporte **aucune garantie** de lobbies plus faciles : le matchmaking
 > dépend surtout de la connexion et du niveau. Utiliser un VPN pour influencer le matchmaking peut enfreindre les
 > conditions d'utilisation de certains jeux : **à tes risques**.
+
+## Aperçu
+
+| Changement de région | Connecté |
+|---|---|
+| ![Animation de chargement pendant la connexion à Taipei](docs/screenshots/connexion.png) | ![Message « Tu es désormais connecté ! » et trafic de la session](docs/screenshots/connecte.png) |
+
+*Captures réalisées avec les serveurs de démo (mode développement).*
 
 ## Installation
 
