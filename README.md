@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.png" width="150" alt="Logo NEXUS LOBBY"></p>
+
 # NEXUS LOBBY
 
 [![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)

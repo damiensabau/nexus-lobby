@@ -55,27 +55,42 @@ public sealed class TrayIcon : IDisposable
     public void Notify(string title, string message, bool success) =>
         _icon.ShowBalloonTip(5000, title, message, success ? Forms.ToolTipIcon.Info : Forms.ToolTipIcon.Warning);
 
+    // Logo de l'app (fond transparent), chargé une fois depuis les ressources WPF.
+    private static readonly Lazy<Bitmap> Logo = new(() =>
+    {
+        var uri = new Uri("pack://application:,,,/VpnClient.App;component/Resources/logo.png");
+        using var stream = System.Windows.Application.GetResourceStream(uri)!.Stream;
+        return new Bitmap(stream);
+    });
+
+    /// <summary>Logo + pastille d'état en bas à droite (aucune au repos).</summary>
     private static Icon Draw(ConnectionState state, out IntPtr handle)
     {
-        var color = state switch
+        Color? dot = state switch
         {
             ConnectionState.Connected => Color.FromArgb(0x22, 0xC5, 0x5E),
             ConnectionState.Connecting or ConnectionState.Disconnecting => Color.FromArgb(0xF5, 0x9E, 0x0B),
             ConnectionState.Error => Color.FromArgb(0xEF, 0x44, 0x44),
-            _ => Color.FromArgb(0x63, 0x66, 0xF1),
+            _ => null,
         };
 
         using var bmp = new Bitmap(32, 32);
         using (var g = Graphics.FromImage(bmp))
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             g.Clear(Color.Transparent);
-            using var fill = new SolidBrush(color);
-            g.FillEllipse(fill, 1, 1, 30, 30);
-            // Cible blanche : anneau + point central.
-            using var ring = new Pen(Color.White, 3f);
-            g.DrawEllipse(ring, 8, 8, 16, 16);
-            g.FillEllipse(Brushes.White, 13, 13, 6, 6);
+            g.DrawImage(Logo.Value, new Rectangle(0, 0, 32, 32));
+
+            if (dot is { } color)
+            {
+                // Contour sombre : la pastille reste lisible sur une barre des tâches claire comme sombre.
+                using var outline = new SolidBrush(Color.FromArgb(0x07, 0x0C, 0x18));
+                g.FillEllipse(outline, 17, 17, 15, 15);
+                using var fill = new SolidBrush(color);
+                g.FillEllipse(fill, 19, 19, 11, 11);
+            }
         }
 
         handle = bmp.GetHicon();
