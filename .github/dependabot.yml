@@ -1,0 +1,38 @@
+# Mises à jour automatiques des dépendances.
+# Les PR ouvertes par Dependabot passent par la CI et par CODEOWNERS comme les autres.
+version: 2
+updates:
+  # Actions GitHub utilisées dans .github/workflows
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Paris
+    labels: [ci]
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Paquets NuGet de la solution (src/ et tests/)
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Paris
+    commit-message:
+      prefix: deps
+    open-pull-requests-limit: 5
+    groups:
+      microsoft-extensions:
+        patterns:
+          - "Microsoft.Extensions.*"
+          - "System.*"
+      tests:
+        patterns:
+          - "xunit*"
+          - "Microsoft.NET.Test.Sdk"
+          - "coverlet.*"
